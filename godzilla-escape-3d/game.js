@@ -76,6 +76,8 @@
     roar: () => { beep({ freq: 90, dur: 0.5, type: 'sawtooth', gain: 0.13, slide: 40 }); beep({ freq: 55, dur: 0.6, type: 'sawtooth', gain: 0.11, slide: -20, delay: 0.1 }); },
     warn: () => beep({ freq: 700, dur: 0.08, type: 'square', gain: 0.05, slide: -200 }),
     collapse: () => { noiseBurst({ dur: 0.5, gain: 0.2, filterFreq: 700 }); beep({ freq: 80, dur: 0.4, type: 'sawtooth', gain: 0.12, slide: -40 }); },
+    punchHit: () => { noiseBurst({ dur: 0.12, gain: 0.16, filterFreq: 900 }); beep({ freq: 180, dur: 0.09, type: 'square', gain: 0.12, slide: -100 }); },
+    punchWhiff: () => beep({ freq: 300, dur: 0.1, type: 'sine', gain: 0.04, slide: 120 }),
     gameover: () => { beep({ freq: 300, dur: 0.4, type: 'sawtooth', gain: 0.12, slide: -250 }); beep({ freq: 200, dur: 0.5, type: 'sawtooth', gain: 0.12, slide: -150, delay: 0.15 }); },
     victory: () => { beep({ freq: 440, dur: 0.15, type: 'triangle', gain: 0.1 }); beep({ freq: 550, dur: 0.15, type: 'triangle', gain: 0.1, delay: 0.15 }); beep({ freq: 660, dur: 0.3, type: 'triangle', gain: 0.1, delay: 0.3 }); },
   };
@@ -113,8 +115,10 @@
     keys[e.key] = true;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
     if (state === 'playing' && (e.key === 'ArrowUp' || e.key === ' ')) doJump();
+    if (state === 'playing' && (e.key === 'f' || e.key === 'F')) doPunch();
   });
   window.addEventListener('keyup', e => { keys[e.key] = false; });
+  canvas.addEventListener('mousedown', () => { if (state === 'playing') doPunch(); });
 
   function doJump() {
     if (player.jumping) return;
@@ -180,13 +184,24 @@
     }
   }
 
-  // ---------- Godzilla (roaming atmosphere) ----------
+  // ---------- Godzilla ----------
+  const WANDER_SPEED = 3.2, ATTACK_SPEED = 15, ENGAGE_DIST = 10;
   const godzilla = {
     x: 14, z: 40, targetX: 14, targetZ: 40, roarT: 0, walkPhase: 0,
+    mode: 'wander', // 'wander' | 'attacking'
   };
   function pickGodzillaTarget() {
-    godzilla.targetX = rand(-ARENA_HALF - 6, ARENA_HALF + 6);
-    godzilla.targetZ = rand(10, GOAL_Z + 10);
+    // wander somewhere in the player's general vicinity, not the far corners of the arena,
+    // so he stays a visible, present threat rather than an occasional background prop
+    const a = rand(0, Math.PI * 2);
+    const d = rand(12, 26);
+    godzilla.targetX = clamp(player.px + Math.sin(a) * d, -ARENA_HALF - 4, ARENA_HALF + 4);
+    godzilla.targetZ = clamp(player.pz + Math.cos(a) * d, 6, GOAL_Z + 12);
+  }
+  function sendGodzillaToAttack(dx, dz, dist) {
+    godzilla.mode = 'attacking';
+    godzilla.targetX = clamp(player.px + dx * dist, -ARENA_HALF - 4, ARENA_HALF + 4);
+    godzilla.targetZ = clamp(player.pz + dz * dist, 1, GOAL_Z + 12);
   }
 
   // ---------- Hazards (directional attacks anchored in world space) ----------
@@ -202,18 +217,21 @@
     right: () => [Math.cos(player.yaw), -Math.sin(player.yaw)],
   };
 
-  function scheduleHazard() {
+  function scheduleHazard(forcedKind) {
     if (hazard) return;
     const roll = Math.random();
-    let kind;
-    if (roll < 0.22) kind = 'front';
-    else if (roll < 0.44) kind = 'back';
-    else if (roll < 0.66) kind = 'left';
-    else if (roll < 0.85) kind = 'right';
-    else kind = 'aoe';
+    let kind = forcedKind || null;
+    if (!kind) {
+      if (roll < 0.22) kind = 'front';
+      else if (roll < 0.44) kind = 'back';
+      else if (roll < 0.66) kind = 'left';
+      else if (roll < 0.85) kind = 'right';
+      else kind = 'aoe';
+    }
 
     if (kind === 'aoe') {
       hazard = { kind, cx: player.px, cz: player.pz, radius: 5.5, t: 0, dur: 1.3, resolved: false };
+      sendGodzillaToAttack(0, 0, 0);
       godzilla.roarT = 1.3;
       SFX.roar();
     } else {
@@ -223,6 +241,8 @@
       const [dx, dz] = DIR_VEC[kind]();
       const radius = kind === 'back' ? 3.4 : 3.0;
       hazard = { kind, cx: player.px + dx * (radius * 0.35), cz: player.pz + dz * (radius * 0.35), radius, t: 0, dur: 1.0, resolved: false };
+      // Godzilla physically closes in from that same bearing — the attack IS him arriving there.
+      sendGodzillaToAttack(dx, dz, ENGAGE_DIST);
       SFX.warn();
     }
   }
@@ -261,25 +281,82 @@
     }
   }
 
+  // screen-space floaters (fixed UI position, not world-projected) for short callouts
+  let screenFloaters = [];
+  function spawnFloaterScreen(text, color) {
+    screenFloaters.push({ text, color, life: 1.3, maxLife: 1.3 });
+  }
+  function updateScreenFloaters(dt) {
+    for (let i = screenFloaters.length - 1; i >= 0; i--) {
+      screenFloaters[i].life -= dt;
+      if (screenFloaters[i].life <= 0) screenFloaters.splice(i, 1);
+    }
+  }
+  function drawScreenFloaters() {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 22px "Noto Sans JP", sans-serif';
+    screenFloaters.forEach((f, i) => {
+      ctx.globalAlpha = clamp(f.life / f.maxLife, 0, 1);
+      ctx.fillStyle = f.color;
+      ctx.shadowColor = f.color;
+      ctx.shadowBlur = 10;
+      ctx.fillText(f.text, W / 2, H * 0.26 - i * 30);
+    });
+    ctx.restore();
+  }
+
   // ---------- Game state ----------
   let state = 'start'; // start | playing | ended
   let elapsed = 0;
   let shakeTime = 0, shakeMag = 0;
   let flashAlpha = 0;
   let lastTime = performance.now();
+  let provokeCount = 0;
+  let punchCooldown = 0;
+  let punchAnim = 0;
+  const PUNCH_RANGE = 13, PUNCH_CD = 0.6;
 
   function triggerShake(mag, time) {
     shakeMag = Math.max(shakeMag, mag);
     shakeTime = Math.max(shakeTime, time);
   }
 
+  function doPunch() {
+    if (punchCooldown > 0) return;
+    punchCooldown = PUNCH_CD;
+    punchAnim = 0.25;
+    const d = Math.hypot(godzilla.x - player.px, godzilla.z - player.pz);
+    const inFront = bearingOf(godzilla.x, godzilla.z) === 'front';
+    if (d < PUNCH_RANGE && inFront) {
+      provokeCount += 1;
+      godzilla.roarT = 0.6;
+      triggerShake(4, 0.15);
+      spawnParticles3D(godzilla.x, 2, godzilla.z, '#ffd166', 10, 3, 0.4);
+      spawnFloaterScreen('挑発成功！ゴジラが怒っている', '#ffd166');
+      SFX.punchHit();
+      // provoke him into an immediate frontal counter-attack
+      if (!hazard) {
+        hazardTimer = 0.5;
+        pendingForcedKind = 'front';
+      }
+    } else {
+      SFX.punchWhiff();
+    }
+  }
+
+  let pendingForcedKind = null;
+
   function resetGame() {
     player.px = rand(-4, 4); player.pz = ARENA_START_Z; player.yaw = 0;
     player.y = 0; player.vy = 0; player.jumping = false;
     player.hp = player.maxHp; player.invuln = 1.0; player.stumble = 0; player.bob = 0;
     particles = [];
+    screenFloaters = [];
     hazard = null; hazardTimer = 4; hazardMin = 4.5; hazardMax = 7;
-    godzilla.x = 14; godzilla.z = 44; godzilla.roarT = 0;
+    pendingForcedKind = null;
+    provokeCount = 0; punchCooldown = 0; punchAnim = 0;
+    godzilla.x = 14; godzilla.z = 44; godzilla.roarT = 0; godzilla.mode = 'wander';
     pickGodzillaTarget();
     elapsed = 0;
     flashAlpha = 0;
@@ -315,12 +392,12 @@
       title.textContent = 'ESCAPED';
       title.classList.add('over');
       SFX.victory();
-      body.textContent = `全方位からの猛攻を潜り抜け、ゲートに辿り着いた。生存時間: ${Math.floor(elapsed)}秒`;
+      body.textContent = `全方位からの猛攻を潜り抜け、ゲートに辿り着いた。生存時間: ${Math.floor(elapsed)}秒／挑発成功: ${provokeCount}回`;
     } else {
       title.textContent = 'CAUGHT';
       title.classList.remove('over');
       SFX.gameover();
-      body.textContent = `怪獣の猛威に飲み込まれた。生存時間: ${Math.floor(elapsed)}秒`;
+      body.textContent = `怪獣の猛威に飲み込まれた。生存時間: ${Math.floor(elapsed)}秒／挑発成功: ${provokeCount}回`;
     }
     document.getElementById('gameOverScreen').classList.remove('hidden');
   }
@@ -386,11 +463,17 @@
   }
 
   function updateGodzilla(dt) {
-    godzilla.walkPhase += dt * 2;
+    const speed = godzilla.mode === 'attacking' ? ATTACK_SPEED : WANDER_SPEED;
+    godzilla.walkPhase += dt * (godzilla.mode === 'attacking' ? 5 : 2);
     const dx = godzilla.targetX - godzilla.x, dz = godzilla.targetZ - godzilla.z;
     const d = Math.hypot(dx, dz);
-    if (d < 2) pickGodzillaTarget();
-    else { godzilla.x += (dx / d) * 3.5 * dt; godzilla.z += (dz / d) * 3.5 * dt; }
+    if (d < 1.5) {
+      if (godzilla.mode === 'wander') pickGodzillaTarget();
+      // while attacking, once he arrives he just holds position until the hazard resolves
+    } else {
+      godzilla.x += (dx / d) * speed * dt;
+      godzilla.z += (dz / d) * speed * dt;
+    }
     if (godzilla.roarT > 0) godzilla.roarT -= dt;
   }
 
@@ -402,8 +485,14 @@
   function updateHazard(dt) {
     hazardTimer -= dt;
     if (hazardTimer <= 0 && !hazard) {
-      if (Math.random() < 0.12) triggerBuildingCollapse();
-      else scheduleHazard();
+      if (pendingForcedKind) {
+        scheduleHazard(pendingForcedKind);
+        pendingForcedKind = null;
+      } else if (Math.random() < 0.12) {
+        triggerBuildingCollapse();
+      } else {
+        scheduleHazard();
+      }
       hazardTimer = rand(hazardMin, hazardMax);
       hazardMin = Math.max(3, hazardMin - 0.12);
       hazardMax = Math.max(4.2, hazardMax - 0.12);
@@ -427,6 +516,8 @@
       spawnParticles3D(hazard.cx, 0.3, hazard.cz, hazard.kind === 'aoe' ? '#ff8a5b' : '#ff5b5b', 20, 4.5, 0.6);
       if (!safe) takeDamage();
       hazard = null;
+      godzilla.mode = 'wander';
+      pickGodzillaTarget();
     }
   }
 
@@ -563,7 +654,7 @@
     if (!p) return;
     const facingAway = Math.sin(godzilla.walkPhase * 0.3) > 0 ? 1 : -1;
     const bodyColor = godzilla.roarT > 0 ? '#5a2a3a' : '#2a3a2a';
-    const s = p.scale * 0.075;
+    const s = p.scale * 0.115;
 
     ctx.save();
     ctx.translate(p.sx, p.sy);
@@ -634,6 +725,29 @@
     }
   }
 
+  function drawPunchFist() {
+    if (punchAnim <= 0) return;
+    const t = 1 - punchAnim / 0.25;
+    const reach = Math.sin(t * Math.PI); // out and back
+    const fx = W / 2 + 60, fy = H - 90 - reach * 140;
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.fillStyle = '#e8b98c';
+    ctx.strokeStyle = '#5a3a24';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#c99a6e';
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.arc(i * 14, -22, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawVignette() {
     const grad = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
@@ -664,11 +778,14 @@
       updateGodzilla(dt);
       updateHazard(dt);
       updateCompass();
+      punchCooldown = Math.max(0, punchCooldown - dt);
+      punchAnim = Math.max(0, punchAnim - dt);
       document.getElementById('distance').textContent = `${Math.floor(elapsed)} s`;
       if (player.pz >= GOAL_Z - GOAL_RADIUS && Math.abs(player.px) < GOAL_RADIUS + 2) endGame(true);
     }
 
     updateParticles(dt);
+    updateScreenFloaters(dt);
 
     ctx.save();
     ctx.translate(shakeX, shakeY);
@@ -687,6 +804,7 @@
     drawParticlesObj();
     drawHazardMarker();
     drawVignette();
+    if (state === 'playing') { drawScreenFloaters(); drawPunchFist(); }
     ctx.restore();
 
     if (flashAlpha > 0) {
@@ -697,7 +815,7 @@
     }
 
     if (INSPECT) {
-      window.__DEBUG_STATE__ = { state, elapsed, player, hazard, godzilla, obstacles };
+      window.__DEBUG_STATE__ = { state, elapsed, player, hazard, godzilla, obstacles, provokeCount, punchCooldown };
     }
 
     requestAnimationFrame(loop);
