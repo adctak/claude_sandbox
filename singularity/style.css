@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #030006;
+  font-family: 'Rajdhani', sans-serif;
+  cursor: none;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #030006;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 18px 26px;
+  pointer-events: none;
+  color: #f2e9ff;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+  z-index: 5;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.hud-row.sub {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+#score { color: #b98cff; }
+#timer { color: #ff6bd6; }
+#combo {
+  color: #ffd166;
+  font-size: 16px;
+  opacity: 0.9;
+  min-width: 90px;
+}
+#mass { color: #6be8ff; }
+#eaten { color: #ff9d6b; }
+
+#ammoRow {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+#ammoRow .ammo {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #b98cff 55%, #4b1f8f 100%);
+  box-shadow: 0 0 8px #b98cff, 0 0 3px #fff inset;
+}
+
+#ammoRow .ammo.empty {
+  background: rgba(255,255,255,0.08);
+  box-shadow: none;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(ellipse at center, rgba(40,4,60,0.55) 0%, rgba(2,0,6,0.94) 75%);
+  z-index: 10;
+  text-align: center;
+  padding: 20px;
+  cursor: default;
+}
+
+.overlay.hidden { display: none; }
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(40px, 9vw, 86px);
+  color: #b98cff;
+  text-shadow:
+    0 0 10px #b98cff,
+    0 0 30px #b98cff,
+    0 0 60px #ff6bd6;
+  letter-spacing: 4px;
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
+.title span {
+  color: #ff6bd6;
+  text-shadow: 0 0 10px #ff6bd6, 0 0 30px #ff6bd6, 0 0 60px #b98cff;
+}
+
+.title.over {
+  color: #6be8ff;
+  text-shadow: 0 0 10px #6be8ff, 0 0 40px #6be8ff;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+}
+
+.subtitle {
+  color: #e6d9ff;
+  font-size: 18px;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  max-width: 560px;
+}
+
+.howto {
+  margin-top: 10px;
+  color: #cbb8ff;
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 520px;
+}
+
+.howto b { color: #ffd166; }
+
+button {
+  margin-top: 14px;
+  padding: 14px 42px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #0a0010;
+  background: linear-gradient(90deg, #b98cff, #ff6bd6);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(185, 140, 255, 0.6), 0 0 40px rgba(255, 107, 214, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 30px rgba(185, 140, 255, 0.9), 0 0 60px rgba(255, 107, 214, 0.6);
+}
+
+button:active { transform: scale(0.97); }

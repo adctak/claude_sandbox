@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SINGULARITY</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-row">
+      <div id="score">SCORE 0</div>
+      <div id="timer">TIME 90</div>
+      <div id="combo"></div>
+    </div>
+    <div class="hud-row sub">
+      <div id="mass">MASS 18</div>
+      <div id="eaten">EATEN 0</div>
+    </div>
+    <div id="ammoRow"></div>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <h1 class="title">SINGULARI<span>TY</span></h1>
+    <p class="subtitle">全てを飲み込む、小さな重力の化物になれ</p>
+    <div class="howto">
+      <p><b>マウス移動</b> — ブラックホールを操作（近づくほど強く吸い寄せる）</p>
+      <p><b>左クリック / SPACE</b> — 吸い込んだ獲物を吐き出して命中させ、麻痺させる</p>
+      <p>逃げる獲物は麻痺している間に吸い込め。育てば、より大きな獲物も飲み込める。</p>
+    </div>
+    <button id="startBtn">CLICK TO START</button>
+  </div>
+
+  <div id="gameOverScreen" class="overlay hidden">
+    <h1 class="title over">TIME UP</h1>
+    <p id="finalScore" class="subtitle"></p>
+    <button id="restartBtn">RETRY</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
