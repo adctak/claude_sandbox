@@ -63,11 +63,12 @@ html, body {
 }
 
 #ammoRow .ammo {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff, #b98cff 55%, #4b1f8f 100%);
-  box-shadow: 0 0 8px #b98cff, 0 0 3px #fff inset;
+  width: 15px;
+  height: 15px;
+  background: #ff5b7a;
+  box-shadow: 0 0 8px #ff5b7a, 0 0 3px #fff inset;
+  transform: rotate(45deg);
+  border-radius: 2px 8px 2px 8px;
 }
 
 #ammoRow .ammo.empty {

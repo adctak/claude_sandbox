@@ -12,29 +12,29 @@
   <div id="hud">
     <div class="hud-row">
       <div id="score">SCORE 0</div>
-      <div id="timer">TIME 90</div>
+      <div id="timer">TIME 0</div>
       <div id="combo"></div>
     </div>
     <div class="hud-row sub">
-      <div id="mass">MASS 18</div>
-      <div id="eaten">EATEN 0</div>
+      <div id="mass">撃破 0</div>
+      <div id="eaten">解体 0</div>
     </div>
     <div id="ammoRow"></div>
   </div>
 
   <div id="startScreen" class="overlay">
     <h1 class="title">SINGULARI<span>TY</span></h1>
-    <p class="subtitle">全てを飲み込む、小さな重力の化物になれ</p>
+    <p class="subtitle">中心に座す重力の化物として、押し寄せる敵を迎え撃て</p>
     <div class="howto">
-      <p><b>マウス移動</b> — ブラックホールを操作（近づくほど強く吸い寄せる）</p>
-      <p><b>左クリック / SPACE</b> — 吸い込んだ獲物を吐き出して命中させ、麻痺させる</p>
-      <p>逃げる獲物は麻痺している間に吸い込め。育てば、より大きな獲物も飲み込める。</p>
+      <p><b>マウス</b> — 照準（ブラックホールは中央から動かない）</p>
+      <p><b>左クリック / SPACE（長押し可）</b> — 照準方向へ球を発射</p>
+      <p>敵はブラックホールに吸い込まれながら爆弾を置く。敵自体が吸い込まれるのは無害（むしろ養分）だが、<b>爆弾</b>が吸い込まれると被弾する。球を当てて先に爆破させろ。敵は球を避けるように動き回る。</p>
     </div>
     <button id="startBtn">CLICK TO START</button>
   </div>
 
   <div id="gameOverScreen" class="overlay hidden">
-    <h1 class="title over">TIME UP</h1>
+    <h1 class="title over">CORE BREACHED</h1>
     <p id="finalScore" class="subtitle"></p>
     <button id="restartBtn">RETRY</button>
   </div>

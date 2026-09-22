@@ -17,9 +17,9 @@
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    hole.x = W / 2;
+    hole.y = H / 2;
   }
-  window.addEventListener('resize', resize);
-  resize();
 
   // ---------- Audio ----------
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -68,13 +68,13 @@
   }
 
   const SFX = {
-    absorbSmall: () => { beep({ freq: 320, dur: 0.12, type: 'sine', gain: 0.1, slide: -180 }); },
-    absorbMed: () => { beep({ freq: 220, dur: 0.18, type: 'sine', gain: 0.12, slide: -140 }); noiseBurst({ dur: 0.15, gain: 0.08 }); },
-    absorbBig: () => { beep({ freq: 140, dur: 0.3, type: 'sine', gain: 0.16, slide: -100 }); noiseBurst({ dur: 0.3, gain: 0.14 }); },
-    spit: () => beep({ freq: 300, dur: 0.12, type: 'triangle', gain: 0.09, slide: 260 }),
-    paralyze: () => { beep({ freq: 900, dur: 0.1, type: 'square', gain: 0.08, slide: -400 }); noiseBurst({ dur: 0.12, gain: 0.1, type: 'highpass', filterFreq: 300 }); },
-    empty: () => beep({ freq: 140, dur: 0.06, type: 'square', gain: 0.05 }),
-    detect: () => beep({ freq: 500, dur: 0.04, type: 'sine', gain: 0.03, slide: 200 }),
+    fire: () => beep({ freq: 620, dur: 0.045, type: 'square', gain: 0.04, slide: -260 }),
+    killEnemy: () => { beep({ freq: 260, dur: 0.14, type: 'sawtooth', gain: 0.11, slide: -140 }); noiseBurst({ dur: 0.14, gain: 0.08 }); },
+    absorbEnemy: () => beep({ freq: 340, dur: 0.16, type: 'sine', gain: 0.09, slide: -160 }),
+    defuse: () => { beep({ freq: 700, dur: 0.1, type: 'triangle', gain: 0.09, slide: 300 }); noiseBurst({ dur: 0.1, gain: 0.08, type: 'highpass', filterFreq: 500 }); },
+    bombDrop: () => beep({ freq: 200, dur: 0.08, type: 'square', gain: 0.05, slide: -60 }),
+    boom: () => { beep({ freq: 90, dur: 0.4, type: 'sawtooth', gain: 0.2, slide: -60 }); noiseBurst({ dur: 0.45, gain: 0.28, filterFreq: 900 }); },
+    hurt: () => beep({ freq: 140, dur: 0.25, type: 'sawtooth', gain: 0.12, slide: -80 }),
     gameover: () => { beep({ freq: 300, dur: 0.4, type: 'sawtooth', gain: 0.12, slide: -250 }); beep({ freq: 200, dur: 0.5, type: 'sawtooth', gain: 0.12, slide: -150, delay: 0.15 }); },
   };
 
@@ -82,16 +82,15 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-  function lerp(a, b, t) { return a + (b - a) * t; }
 
   // ---------- Input ----------
   const mouse = { x: 0, y: 0 };
-  let spitRequested = false;
+  let firing = false;
   window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-  window.addEventListener('mousedown', () => { spitRequested = true; });
-  window.addEventListener('keydown', e => {
-    if (e.key === ' ') { e.preventDefault(); spitRequested = true; }
-  });
+  window.addEventListener('mousedown', () => { firing = true; });
+  window.addEventListener('mouseup', () => { firing = false; });
+  window.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); firing = true; } });
+  window.addEventListener('keyup', e => { if (e.key === ' ') firing = false; });
   window.addEventListener('touchmove', e => {
     const t = e.touches[0];
     mouse.x = t.clientX; mouse.y = t.clientY;
@@ -99,11 +98,12 @@
   window.addEventListener('touchstart', e => {
     const t = e.touches[0];
     mouse.x = t.clientX; mouse.y = t.clientY;
-    spitRequested = true;
+    firing = true;
   }, { passive: true });
+  window.addEventListener('touchend', () => { firing = false; }, { passive: true });
 
   mouse.x = window.innerWidth / 2;
-  mouse.y = window.innerHeight / 2;
+  mouse.y = window.innerHeight / 2 - 100;
 
   // ---------- Background: nebula starfield ----------
   const stars = [];
@@ -114,11 +114,10 @@
   function drawBackground(dt) {
     ctx.fillStyle = '#030006';
     ctx.fillRect(0, 0, W, H);
-
     for (const s of stars) {
       s.tw += dt * 1.6;
       const alpha = 0.35 + Math.sin(s.tw) * 0.25;
-      const color = s.hue < 0.5 ? `rgba(185,140,255,${clamp(alpha,0,1)})` : `rgba(107,232,255,${clamp(alpha,0,1)})`;
+      const color = s.hue < 0.5 ? `rgba(185,140,255,${clamp(alpha, 0, 1)})` : `rgba(107,232,255,${clamp(alpha, 0, 1)})`;
       ctx.fillStyle = color;
       const sx = (s.x % W + W) % W;
       const sy = (s.y % H + H) % H;
@@ -207,111 +206,109 @@
     ctx.restore();
   }
 
-  // ---------- Player (black hole) ----------
-  const player = {
+  // ---------- The black hole (fixed at center) ----------
+  const hole = {
     x: 0, y: 0,
-    radius: 18,
-    ammo: 0,
-    maxAmmo: 6,
-    spitCooldown: 0,
+    radius: 32,
+    maxRadius: 66,
     diskAngle: 0,
+    fireCooldown: 0,
   };
 
-  function pullRadius() { return player.radius * 7; }
-  function pullConst() { return player.radius * 60; }
+  resize();
+  window.addEventListener('resize', resize);
 
-  function resetPlayer() {
-    player.x = W / 2;
-    player.y = H / 2;
-    player.radius = DEBUG ? 60 : 18;
-    player.ammo = DEBUG ? 6 : 0;
-    player.spitCooldown = 0;
-  }
-
-  function growPlayer(amount) {
-    player.radius += amount / (1 + player.radius / 130);
-  }
-
-  // ---------- Critters ----------
-  const TYPES = {
-    small:  { r: 8,  fleeSpeed: 180, score: 10, color: '#6be8ff', paraColor: '#bff5ff' },
-    medium: { r: 14, fleeSpeed: 145, score: 25, color: '#8cff9e', paraColor: '#d6ffdc' },
-    large:  { r: 22, fleeSpeed: 100, score: 60, color: '#ff9d6b', paraColor: '#ffd9c2' },
+  // ---------- Enemies ----------
+  const ENEMY_TYPES = {
+    drifter: {
+      r: 10, hits: 1, radialSpeed: 52, tangentSpeed: 80,
+      dropMin: 2.2, dropMax: 3.6, scoreKill: 35, scoreAbsorb: 15,
+      color: '#8cff9e',
+    },
+    brute: {
+      r: 17, hits: 2, radialSpeed: 34, tangentSpeed: 54,
+      dropMin: 1.5, dropMax: 2.5, scoreKill: 75, scoreAbsorb: 30,
+      color: '#ff9d6b',
+    },
   };
 
-  let critters = [];
-  let critterId = 0;
+  let enemies = [];
+  let enemyId = 0;
 
-  function spawnCritter(forceType) {
-    let type = forceType;
-    if (!type) {
-      const unlocked = ['small'];
-      if (player.radius > 28) unlocked.push('medium', 'medium');
-      if (player.radius > 55) unlocked.push('large');
-      type = unlocked[Math.floor(rand(0, unlocked.length))];
-    }
-    const t = TYPES[type];
-    let x, y, tries = 0;
-    do {
-      x = rand(t.r + 10, W - t.r - 10);
-      y = rand(t.r + 10, H - t.r - 10);
-      tries++;
-    } while (dist(x, y, player.x, player.y) < pullRadius() * 0.9 && tries < 20);
+  function spawnEnemy() {
+    const useBrute = elapsed > 28 && Math.random() < clamp(0.15 + elapsed / 300, 0.15, 0.4);
+    const type = useBrute ? 'brute' : 'drifter';
+    const t = ENEMY_TYPES[type];
+    const edge = Math.floor(rand(0, 4));
+    let x, y;
+    if (edge === 0) { x = rand(0, W); y = -t.r - 10; }
+    else if (edge === 1) { x = W + t.r + 10; y = rand(0, H); }
+    else if (edge === 2) { x = rand(0, W); y = H + t.r + 10; }
+    else { x = -t.r - 10; y = rand(0, H); }
 
-    critters.push({
-      id: critterId++,
+    enemies.push({
+      id: enemyId++,
       type, x, y,
-      vx: rand(-30, 30), vy: rand(-30, 30),
       r: t.r,
-      state: 'roam',
-      wanderAngle: rand(0, Math.PI * 2),
-      wanderTimer: rand(0.5, 1.5),
-      paralyzeTimer: 0,
+      hp: t.hits,
+      spiralDir: Math.random() < 0.5 ? 1 : -1,
+      dropTimer: rand(t.dropMin, t.dropMax),
+      dodgeX: 0, dodgeY: 0,
       blink: rand(0, Math.PI * 2),
     });
   }
 
-  function maintainPopulation(dt) {
-    const cap = DEBUG ? 14 : Math.min(18, 6 + Math.floor(elapsed / 8));
+  let spawnAccum = 0;
+  function maintainSpawns(dt) {
+    const interval = clamp(2.2 - elapsed * 0.02, 0.6, 2.2);
+    const cap = Math.min(14, 3 + Math.floor(elapsed / 10));
     spawnAccum -= dt;
-    if (critters.length < cap && spawnAccum <= 0) {
-      spawnCritter();
-      spawnAccum = rand(0.4, 1.0);
+    if (enemies.length < cap && spawnAccum <= 0) {
+      spawnEnemy();
+      spawnAccum = interval * rand(0.7, 1.3);
     }
   }
-  let spawnAccum = 0;
 
-  // ---------- Projectiles ----------
-  let projectiles = [];
+  // ---------- Bombs ----------
+  let bombs = [];
+  let bombId = 0;
 
-  function trySpit() {
-    if (player.spitCooldown > 0 || player.ammo <= 0) {
-      if (player.ammo <= 0) SFX.empty();
-      return;
-    }
-    player.ammo -= 1;
-    player.spitCooldown = 0.35;
-    const a = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    projectiles.push({
-      x: player.x + Math.cos(a) * (player.radius + 6),
-      y: player.y + Math.sin(a) * (player.radius + 6),
-      vx: Math.cos(a) * 640,
-      vy: Math.sin(a) * 640,
-      r: 6,
-      life: 1.6,
+  function dropBomb(x, y) {
+    bombs.push({ id: bombId++, x, y, age: 0, r: 7 });
+    SFX.bombDrop();
+    spawnParticles(x, y, '#ffd166', 6, 60, 0.3);
+  }
+
+  // ---------- Orbs (player projectiles) ----------
+  let orbs = [];
+
+  function fireOrb() {
+    if (hole.fireCooldown > 0) return;
+    hole.fireCooldown = 0.12;
+    const a = Math.atan2(mouse.y - hole.y, mouse.x - hole.x);
+    orbs.push({
+      x: hole.x + Math.cos(a) * (hole.radius + 6),
+      y: hole.y + Math.sin(a) * (hole.radius + 6),
+      vx: Math.cos(a) * 760,
+      vy: Math.sin(a) * 760,
+      r: 5,
+      life: 1.4,
     });
-    SFX.spit();
+    SFX.fire();
   }
 
   // ---------- Game state ----------
   let state = 'start';
   let score = 0;
-  let eaten = 0;
+  let killed = 0;
+  let defused = 0;
+  let hp = 5;
+  const maxHp = 5;
   let combo = 0;
   let comboTimer = 0;
-  let timeLeft = 90;
   let elapsed = 0;
   let shakeTime = 0, shakeMag = 0;
+  let flashAlpha = 0;
   let lastTime = performance.now();
 
   function triggerShake(mag, time) {
@@ -320,19 +317,23 @@
   }
 
   function startGame() {
-    resetPlayer();
-    critters = [];
-    projectiles = [];
+    hole.radius = 32;
+    hole.fireCooldown = 0;
+    enemies = [];
+    bombs = [];
+    orbs = [];
     particles = [];
     floaters = [];
     score = 0;
-    eaten = 0;
+    killed = 0;
+    defused = 0;
+    hp = maxHp;
     combo = 0;
     comboTimer = 0;
-    timeLeft = 90;
     elapsed = 0;
     spawnAccum = 0;
-    for (let i = 0; i < (DEBUG ? 10 : 5); i++) spawnCritter('small');
+    flashAlpha = 0;
+    for (let i = 0; i < 2; i++) spawnEnemy();
     state = 'playing';
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
@@ -342,166 +343,189 @@
     state = 'gameover';
     SFX.gameover();
     document.getElementById('finalScore').textContent =
-      `SCORE ${score} ／ EATEN ${eaten} ／ MAX MASS ${Math.round(player.radius)}`;
+      `SCORE ${score} ／ 撃破 ${killed} ／ 解体 ${defused} ／ 生存 ${Math.floor(elapsed)}秒`;
     document.getElementById('gameOverScreen').classList.remove('hidden');
   }
 
-  function addScore(base, x, y) {
+  function addScore(base, x, y, color) {
     combo += 1;
     comboTimer = 2.0;
-    const mult = 1 + Math.min(combo - 1, 8) * 0.15;
+    const mult = 1 + Math.min(combo - 1, 8) * 0.12;
     const gained = Math.round(base * mult);
     score += gained;
-    spawnFloater(x, y, `+${gained}${combo > 1 ? ` x${mult.toFixed(1)}` : ''}`, combo > 3 ? '#ff6bd6' : '#ffd166');
+    spawnFloater(x, y, `+${gained}${combo > 1 ? ` x${mult.toFixed(1)}` : ''}`, color || '#ffd166');
+  }
+
+  function loseHp(amount) {
+    hp = Math.max(0, hp - amount);
+    combo = 0;
+    triggerShake(14, 0.35);
+    flashAlpha = 0.55;
+    SFX.hurt();
+    if (hp <= 0) endGame();
   }
 
   // ---------- Updates ----------
-  function updatePlayer(dt) {
-    const chase = 6.5;
-    player.x = lerp(player.x, mouse.x, clamp(chase * dt, 0, 1));
-    player.y = lerp(player.y, mouse.y, clamp(chase * dt, 0, 1));
-    player.x = clamp(player.x, 0, W);
-    player.y = clamp(player.y, 0, H);
-    player.diskAngle += dt * 1.4;
-    player.spitCooldown = Math.max(0, player.spitCooldown - dt);
-
-    if (spitRequested) {
-      trySpit();
-    }
-    spitRequested = false;
+  function updateHole(dt) {
+    hole.diskAngle += dt * 1.4;
+    hole.fireCooldown = Math.max(0, hole.fireCooldown - dt);
+    if (firing) fireOrb();
   }
 
-  function updateCritters(dt) {
-    const pr = pullRadius();
-    const pc = pullConst();
+  function updateEnemies(dt) {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      e.blink += dt * 5;
+      const dx = hole.x - e.x, dy = hole.y - e.y;
+      const d = Math.hypot(dx, dy) || 1;
 
-    for (const c of critters) {
-      c.blink += dt * 5;
-      const d = dist(c.x, c.y, player.x, player.y);
-
-      if (c.state === 'paralyzed') {
-        c.paralyzeTimer -= dt;
-        if (d < pr) {
-          const pullMag = clamp(pc / Math.max(d, 22), 0, 300);
-          const dx = (player.x - c.x) / (d || 1), dy = (player.y - c.y) / (d || 1);
-          c.vx = dx * pullMag;
-          c.vy = dy * pullMag;
-        } else {
-          c.vx *= 0.9; c.vy *= 0.9;
-        }
-        if (c.paralyzeTimer <= 0) {
-          c.state = d < pr ? 'flee' : 'roam';
-        }
-      } else if (d < pr) {
-        if (c.state !== 'flee') SFX.detect();
-        c.state = 'flee';
-        const fleeSpeed = TYPES[c.type].fleeSpeed;
-        const fdx = (c.x - player.x) / (d || 1), fdy = (c.y - player.y) / (d || 1);
-        const pullMag = clamp(pc / Math.max(d, 24), 0, 340);
-        const pdx = -fdx, pdy = -fdy;
-        c.vx = fdx * fleeSpeed + pdx * pullMag;
-        c.vy = fdy * fleeSpeed + pdy * pullMag;
-      } else {
-        c.state = 'roam';
-        c.wanderTimer -= dt;
-        if (c.wanderTimer <= 0) {
-          c.wanderAngle += rand(-1.2, 1.2);
-          c.wanderTimer = rand(0.6, 1.6);
-        }
-        const wanderSpeed = 45;
-        c.vx = lerp(c.vx, Math.cos(c.wanderAngle) * wanderSpeed, dt * 2);
-        c.vy = lerp(c.vy, Math.sin(c.wanderAngle) * wanderSpeed, dt * 2);
+      if (d < hole.radius * 0.85) {
+        const t = ENEMY_TYPES[e.type];
+        spawnParticles(e.x, e.y, t.color, 14, 200, 0.5, { x: hole.x, y: hole.y });
+        addScore(t.scoreAbsorb, e.x, e.y, '#8cff9e');
+        SFX.absorbEnemy();
+        hole.radius = Math.min(hole.maxRadius, hole.radius + 0.35);
+        enemies.splice(i, 1);
+        continue;
       }
 
-      c.x += c.vx * dt;
-      c.y += c.vy * dt;
+      const t = ENEMY_TYPES[e.type];
+      const rx = dx / d, ry = dy / d;
+      const tx = -ry * e.spiralDir, ty = rx * e.spiralDir;
+      const tangentFactor = clamp(d / 260, 0.25, 1);
 
-      if (c.x < c.r) { c.x = c.r; c.vx = Math.abs(c.vx); c.wanderAngle = 0; }
-      if (c.x > W - c.r) { c.x = W - c.r; c.vx = -Math.abs(c.vx); c.wanderAngle = Math.PI; }
-      if (c.y < c.r) { c.y = c.r; c.vy = Math.abs(c.vy); c.wanderAngle = Math.PI / 2; }
-      if (c.y > H - c.r) { c.y = H - c.r; c.vy = -Math.abs(c.vy); c.wanderAngle = -Math.PI / 2; }
+      // reactive dodge: steer away from any orb heading roughly towards this enemy
+      let dodgeX = 0, dodgeY = 0;
+      for (const o of orbs) {
+        const odx = e.x - o.x, ody = e.y - o.y;
+        const od = Math.hypot(odx, ody);
+        if (od < 160) {
+          const orbDir = Math.atan2(o.vy, o.vx);
+          const toEnemy = Math.atan2(ody, odx);
+          let diff = Math.atan2(Math.sin(orbDir - toEnemy), Math.cos(orbDir - toEnemy));
+          if (Math.abs(diff) < 0.5) {
+            const perp = { x: -Math.sin(orbDir), y: Math.cos(orbDir) };
+            const side = (odx * perp.x + ody * perp.y) >= 0 ? 1 : -1;
+            const strength = (1 - od / 160) * 260;
+            dodgeX += perp.x * side * strength;
+            dodgeY += perp.y * side * strength;
+          }
+        }
+      }
+      e.dodgeX += (dodgeX - e.dodgeX) * clamp(dt * 8, 0, 1);
+      e.dodgeY += (dodgeY - e.dodgeY) * clamp(dt * 8, 0, 1);
+
+      const speedScale = 1 + Math.min(elapsed / 90, 0.6);
+      const vx = rx * t.radialSpeed * speedScale + tx * t.tangentSpeed * tangentFactor + e.dodgeX;
+      const vy = ry * t.radialSpeed * speedScale + ty * t.tangentSpeed * tangentFactor + e.dodgeY;
+      e.x += vx * dt;
+      e.y += vy * dt;
+
+      e.dropTimer -= dt;
+      if (e.dropTimer <= 0 && d > hole.radius * 2.6) {
+        dropBomb(e.x, e.y);
+        e.dropTimer = rand(t.dropMin, t.dropMax);
+      }
     }
   }
 
-  function updateProjectiles(dt) {
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-      const p = projectiles[i];
-      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
-      if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
-        projectiles.splice(i, 1);
+  function updateBombs(dt) {
+    for (let i = bombs.length - 1; i >= 0; i--) {
+      const b = bombs[i];
+      b.age += dt;
+      const dx = hole.x - b.x, dy = hole.y - b.y;
+      const d = Math.hypot(dx, dy) || 1;
+
+      if (d < hole.radius * 0.85) {
+        spawnParticles(b.x, b.y, '#ff5b5b', 26, 280, 0.6);
+        triggerShake(16, 0.4);
+        SFX.boom();
+        loseHp(1);
+        bombs.splice(i, 1);
+        continue;
+      }
+
+      const speed = clamp(b.age * 16, 0, 230);
+      b.x += (dx / d) * speed * dt;
+      b.y += (dy / d) * speed * dt;
+    }
+  }
+
+  function updateOrbs(dt) {
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const o = orbs[i];
+      o.x += o.vx * dt; o.y += o.vy * dt; o.life -= dt;
+      if (o.life <= 0 || o.x < -20 || o.x > W + 20 || o.y < -20 || o.y > H + 20) {
+        orbs.splice(i, 1);
       }
     }
   }
 
   function handleCollisions() {
-    // projectiles vs critters (paralyze)
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-      const p = projectiles[i];
-      for (const c of critters) {
-        if (c.state === 'paralyzed' || c.state === 'consumed') continue;
-        if (dist(p.x, p.y, c.x, c.y) < p.r + c.r) {
-          c.state = 'paralyzed';
-          c.paralyzeTimer = 3.2;
-          c.vx = 0; c.vy = 0;
-          spawnParticles(c.x, c.y, TYPES[c.type].paraColor, 10, 140, 0.4);
-          SFX.paralyze();
-          projectiles.splice(i, 1);
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const o = orbs[i];
+      let hitSomething = false;
+
+      for (let j = bombs.length - 1; j >= 0; j--) {
+        const b = bombs[j];
+        if (dist(o.x, o.y, b.x, b.y) < o.r + b.r) {
+          spawnParticles(b.x, b.y, '#ffd166', 16, 200, 0.45);
+          addScore(40, b.x, b.y, '#ffd166');
+          SFX.defuse();
+          defused += 1;
+          bombs.splice(j, 1);
+          hitSomething = true;
           break;
         }
       }
-    }
 
-    // critters vs player (consume)
-    for (let i = critters.length - 1; i >= 0; i--) {
-      const c = critters[i];
-      const d = dist(c.x, c.y, player.x, player.y);
-      if (d < player.radius * 0.92) {
-        if (player.radius >= c.r * 1.05) {
-          const t = TYPES[c.type];
-          spawnParticles(c.x, c.y, t.color, 18, 220, 0.5, { x: player.x, y: player.y });
-          if (t === TYPES.large) { SFX.absorbBig(); triggerShake(9, 0.2); }
-          else if (t === TYPES.medium) { SFX.absorbMed(); triggerShake(4, 0.12); }
-          else { SFX.absorbSmall(); }
-          addScore(t.score, c.x, c.y);
-          growPlayer(c.r * 0.55);
-          player.ammo = Math.min(player.maxAmmo, player.ammo + 1);
-          eaten += 1;
-          critters.splice(i, 1);
-        } else {
-          // too big to eat: gently repel critter to the rim
-          const dx = (c.x - player.x) / (d || 1), dy = (c.y - player.y) / (d || 1);
-          c.x = player.x + dx * player.radius * 0.95;
-          c.y = player.y + dy * player.radius * 0.95;
+      if (!hitSomething) {
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (dist(o.x, o.y, e.x, e.y) < o.r + e.r) {
+            e.hp -= 1;
+            spawnParticles(e.x, e.y, ENEMY_TYPES[e.type].color, 8, 140, 0.3);
+            if (e.hp <= 0) {
+              const t = ENEMY_TYPES[e.type];
+              addScore(t.scoreKill, e.x, e.y, '#ff6bd6');
+              SFX.killEnemy();
+              killed += 1;
+              enemies.splice(j, 1);
+            }
+            hitSomething = true;
+            break;
+          }
         }
       }
+
+      if (hitSomething) orbs.splice(i, 1);
     }
   }
 
   function updateUI() {
     document.getElementById('score').textContent = `SCORE ${score}`;
-    document.getElementById('timer').textContent = `TIME ${Math.max(0, Math.ceil(timeLeft))}`;
-    document.getElementById('mass').textContent = `MASS ${Math.round(player.radius)}`;
-    document.getElementById('eaten').textContent = `EATEN ${eaten}`;
+    document.getElementById('timer').textContent = `TIME ${Math.floor(elapsed)}`;
+    document.getElementById('mass').textContent = `撃破 ${killed}`;
+    document.getElementById('eaten').textContent = `解体 ${defused}`;
     document.getElementById('combo').textContent = combo > 1 ? `COMBO x${combo}` : '';
 
     const row = document.getElementById('ammoRow');
     row.innerHTML = '';
-    for (let i = 0; i < player.maxAmmo; i++) {
+    for (let i = 0; i < maxHp; i++) {
       const d = document.createElement('div');
-      d.className = 'ammo' + (i < player.ammo ? '' : ' empty');
+      d.className = 'ammo' + (i < hp ? '' : ' empty');
       row.appendChild(d);
     }
   }
 
   // ---------- Drawing ----------
-  function drawPlayer() {
+  function drawHole() {
     ctx.save();
-    ctx.translate(player.x, player.y);
+    ctx.translate(hole.x, hole.y);
 
-    // accretion disk
-    const diskR = player.radius * 2.4;
+    const diskR = hole.radius * 2.4;
     for (let i = 0; i < 3; i++) {
-      const a0 = player.diskAngle * (i % 2 === 0 ? 1 : -1) + i * 2.1;
+      const a0 = hole.diskAngle * (i % 2 === 0 ? 1 : -1) + i * 2.1;
       ctx.save();
       ctx.rotate(a0);
       const grad = ctx.createLinearGradient(-diskR, 0, diskR, 0);
@@ -516,92 +540,86 @@
       ctx.restore();
     }
 
-    // ammo orbs orbiting
-    for (let i = 0; i < player.ammo; i++) {
-      const a = player.diskAngle * 1.6 + (i / Math.max(1, player.ammo)) * Math.PI * 2;
-      const orbR = player.radius + 16;
-      const ox = Math.cos(a) * orbR, oy = Math.sin(a) * orbR * 0.5;
-      ctx.save();
-      ctx.shadowColor = '#b98cff';
-      ctx.shadowBlur = 10;
-      ctx.fillStyle = '#e8d9ff';
-      ctx.beginPath();
-      ctx.arc(ox, oy, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // event horizon glow rim
-    const rim = ctx.createRadialGradient(0, 0, player.radius * 0.6, 0, 0, player.radius * 1.5);
+    const rim = ctx.createRadialGradient(0, 0, hole.radius * 0.6, 0, 0, hole.radius * 1.5);
     rim.addColorStop(0, 'rgba(185,140,255,0.55)');
     rim.addColorStop(0.6, 'rgba(255,107,214,0.25)');
     rim.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = rim;
     ctx.beginPath();
-    ctx.arc(0, 0, player.radius * 1.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, hole.radius * 1.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // black core
     ctx.fillStyle = '#050008';
     ctx.beginPath();
-    ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, hole.radius, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   }
 
-  function drawCritter(c) {
-    const t = TYPES[c.type];
-    const color = c.state === 'paralyzed' ? t.paraColor : t.color;
+  function drawEnemy(e) {
+    const t = ENEMY_TYPES[e.type];
     ctx.save();
-    ctx.translate(c.x, c.y);
-    ctx.shadowColor = color;
-    ctx.shadowBlur = c.state === 'paralyzed' ? 18 : 10;
-    ctx.fillStyle = color + (c.state === 'flee' ? 'cc' : '99');
-    ctx.strokeStyle = color;
+    ctx.translate(e.x, e.y);
+    ctx.shadowColor = t.color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = t.color + 'aa';
+    ctx.strokeStyle = t.color;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // eyes
-    const blinkOpen = Math.abs(Math.sin(c.blink * 0.3)) > 0.08;
+    const blinkOpen = Math.abs(Math.sin(e.blink * 0.3)) > 0.08;
     ctx.fillStyle = '#0a0010';
-    const eyeOffset = c.r * 0.32;
+    const eyeOffset = e.r * 0.32;
     if (blinkOpen) {
       ctx.beginPath();
-      ctx.arc(-eyeOffset, -c.r * 0.1, c.r * 0.14, 0, Math.PI * 2);
-      ctx.arc(eyeOffset, -c.r * 0.1, c.r * 0.14, 0, Math.PI * 2);
+      ctx.arc(-eyeOffset, -e.r * 0.1, e.r * 0.14, 0, Math.PI * 2);
+      ctx.arc(eyeOffset, -e.r * 0.1, e.r * 0.14, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
 
-    if (c.state === 'paralyzed') {
-      const pct = clamp(c.paralyzeTimer / 3.2, 0, 1);
+    if (t.hits > 1) {
+      const w = e.r * 2;
+      const pct = clamp(e.hp / t.hits, 0, 1);
       ctx.save();
-      ctx.translate(c.x, c.y - c.r - 10);
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffd166';
-      ctx.beginPath();
-      ctx.arc(0, 0, 6, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
-      ctx.stroke();
+      ctx.translate(e.x - w / 2, e.y - e.r - 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(0, 0, w, 3);
+      ctx.fillStyle = t.color;
+      ctx.fillRect(0, 0, w * pct, 3);
       ctx.restore();
     }
   }
 
-  function drawProjectiles() {
-    for (const p of projectiles) {
+  function drawBomb(b) {
+    const urgency = clamp(b.age / 3.5, 0, 1);
+    const pulse = 1 + Math.sin(b.age * (10 + urgency * 14)) * 0.15;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.shadowColor = '#ff5b5b';
+    ctx.shadowBlur = 10 + urgency * 10;
+    ctx.fillStyle = `rgba(255,${Math.round(90 - urgency * 40)},${Math.round(90 - urgency * 60)},0.9)`;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.r * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffe0d0';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawOrbs() {
+    for (const o of orbs) {
       ctx.save();
       ctx.shadowColor = '#e8d9ff';
       ctx.shadowBlur = 12;
       ctx.fillStyle = '#f5eeff';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -614,15 +632,20 @@
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(mouse.x, mouse.y, 5, 0, Math.PI * 2);
-    ctx.moveTo(mouse.x - 9, mouse.y);
-    ctx.lineTo(mouse.x - 3, mouse.y);
-    ctx.moveTo(mouse.x + 3, mouse.y);
-    ctx.lineTo(mouse.x + 9, mouse.y);
-    ctx.moveTo(mouse.x, mouse.y - 9);
-    ctx.lineTo(mouse.x, mouse.y - 3);
-    ctx.moveTo(mouse.x, mouse.y + 3);
-    ctx.lineTo(mouse.x, mouse.y + 9);
+    ctx.moveTo(mouse.x - 9, mouse.y); ctx.lineTo(mouse.x - 3, mouse.y);
+    ctx.moveTo(mouse.x + 3, mouse.y); ctx.lineTo(mouse.x + 9, mouse.y);
+    ctx.moveTo(mouse.x, mouse.y - 9); ctx.lineTo(mouse.x, mouse.y - 3);
+    ctx.moveTo(mouse.x, mouse.y + 3); ctx.lineTo(mouse.x, mouse.y + 9);
     ctx.stroke();
+
+    // aim line from hole to cursor
+    ctx.strokeStyle = 'rgba(185,140,255,0.18)';
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(hole.x, hole.y);
+    ctx.lineTo(mouse.x, mouse.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
@@ -646,21 +669,17 @@
     drawBackground(dt);
 
     if (state === 'playing') {
-      updatePlayer(dt);
-      updateCritters(dt);
-      updateProjectiles(dt);
+      updateHole(dt);
+      updateEnemies(dt);
+      updateBombs(dt);
+      updateOrbs(dt);
       handleCollisions();
-      maintainPopulation(dt);
+      maintainSpawns(dt);
 
       elapsed += dt;
-      timeLeft -= dt;
       if (comboTimer > 0) {
         comboTimer -= dt;
         if (comboTimer <= 0) combo = 0;
-      }
-      if (timeLeft <= 0) {
-        timeLeft = 0;
-        endGame();
       }
       updateUI();
     }
@@ -669,9 +688,10 @@
     updateFloaters(dt);
 
     if (state === 'playing' || state === 'gameover') {
-      for (const c of critters) drawCritter(c);
-      drawProjectiles();
-      drawPlayer();
+      for (const b of bombs) drawBomb(b);
+      for (const e of enemies) drawEnemy(e);
+      drawOrbs();
+      drawHole();
     }
     drawParticles();
     drawFloaters();
@@ -679,8 +699,16 @@
 
     ctx.restore();
 
+    if (flashAlpha > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(255,40,40,${flashAlpha})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      flashAlpha = Math.max(0, flashAlpha - dt * 1.8);
+    }
+
     if (INSPECT) {
-      window.__DEBUG_STATE__ = { player, critters, projectiles, score, eaten, state, timeLeft };
+      window.__DEBUG_STATE__ = { hole, enemies, bombs, orbs, score, killed, defused, hp, state, elapsed };
     }
 
     requestAnimationFrame(loop);
@@ -696,7 +724,5 @@
     startGame();
   });
 
-  player.x = W / 2;
-  player.y = H / 2;
   requestAnimationFrame(loop);
 })();
