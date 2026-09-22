@@ -23,7 +23,24 @@
     </div>
   </div>
 
-  <div id="hint">E / SPACE / 左クリック長押しで採掘　M で地図</div>
+  <div id="hint">E / SPACE / 左クリック長押しで採掘　C で工房（クラフト）　M で地図</div>
+
+  <div id="craftPanel" class="hidden">
+    <div class="craft-box">
+      <div class="craft-head">
+        <div>
+          <div class="craft-title">携帯工房</div>
+          <div class="craft-sub">鉱石を加工して付加価値を付けるか、道具にして探索力を上げるか——工房を開いている間は時間が止まる</div>
+        </div>
+        <div class="craft-right">
+          <div id="craftAsset">現在の資産 ¥0</div>
+          <button id="craftClose">閉じる（C / ESC）</button>
+        </div>
+      </div>
+      <div id="recipeList"></div>
+      <div class="craft-foot">数字キー 1〜9 でも製作できます</div>
+    </div>
+  </div>
 
   <div id="startScreen" class="overlay">
     <h1 class="title">DEEP<span>DELVE</span></h1>
@@ -31,8 +48,9 @@
     <div class="howto">
       <p><b>W S</b> 前進・後退　<b>A D</b> 横移動　<b>← → / マウス</b> 視点回転</p>
       <p><b>E / SPACE / 左クリック長押し</b> 採掘（鉱石だけでなく岩も掘れる）　<b>M</b> 地図の拡大</p>
+      <p><b>C</b> 工房 — 鉱石を工芸品に加工して付加価値を付けたり、道具や消耗品を作れる</p>
       <p>壁に埋まった鉱石を掘って集めろ。深い層ほど貴重な鉱石が眠っている。<br>
-      青白く光る<b>縦穴</b>に入ると次の層へ降りる。</p>
+      青白く光る<b>縦穴</b>に入ると次の層へ降りる。最終的な<b>総資産</b>（鉱石＋工芸品の価値）がスコアになる。</p>
       <p>ランタンの燃料は刻一刻と減り、照らせる範囲も狭まっていく。<br>
       落ちている<b>油瓶</b>で補給しながら、燃料が尽きる前に稼げるだけ稼げ。</p>
       <p class="small">水晶やルビーは暗闇でもわずかに光る。見逃すな。</p>

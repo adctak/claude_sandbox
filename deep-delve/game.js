@@ -77,6 +77,12 @@
     oil: () => { beep({ freq: 300, dur: 0.12, type: 'sine', gain: 0.1, slide: 300 }); beep({ freq: 500, dur: 0.14, type: 'sine', gain: 0.08, slide: 250, delay: 0.1 }); },
     descend: () => { noiseBurst({ dur: 1.0, gain: 0.2, filterFreq: 300 }); beep({ freq: 120, dur: 0.9, type: 'sine', gain: 0.12, slide: -70 }); },
     drip: () => beep({ freq: 1200 + Math.random() * 700, dur: 0.12, type: 'sine', gain: 0.025, slide: -700 }),
+    craft: (isGood) => {
+      beep({ freq: 880, dur: 0.05, type: 'square', gain: 0.05 });
+      beep({ freq: 1100, dur: 0.05, type: 'square', gain: 0.05, delay: 0.07 });
+      beep({ freq: isGood ? 1320 : 990, dur: 0.18, type: 'triangle', gain: 0.09, delay: 0.14 });
+    },
+    deny: () => beep({ freq: 150, dur: 0.08, type: 'square', gain: 0.05 }),
     heartbeat: () => { beep({ freq: 60, dur: 0.1, type: 'sine', gain: 0.18 }); beep({ freq: 55, dur: 0.1, type: 'sine', gain: 0.14, delay: 0.16 }); },
     gameover: () => { beep({ freq: 260, dur: 0.6, type: 'sawtooth', gain: 0.1, slide: -200 }); beep({ freq: 180, dur: 0.9, type: 'sawtooth', gain: 0.1, slide: -120, delay: 0.3 }); },
   };
@@ -120,6 +126,28 @@
     let r = Math.random() * total;
     for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; }
     return 0;
+  }
+
+  // ---------- Crafting recipes ----------
+  // kind 'good': sellable item worth more than its ingredients (counts toward assets)
+  // kind 'tool': permanent upgrade (ingredients are consumed, so assets drop in exchange for capability)
+  // kind 'use':  consumed immediately for an effect
+  const ORE_INDEX = Object.fromEntries(ORES.map((o, i) => [o.key, i]));
+  const RECIPES = [
+    { id: 'wire',        kind: 'good', name: '銅線',             icon: '〰', in: { copper: 3 },                        value: 22,  desc: '細く引き延ばした銅線' },
+    { id: 'ingot',       kind: 'good', name: '鉄インゴット',     icon: '▬', in: { iron: 3 },                          value: 42,  desc: '精錬して不純物を除いた鉄塊' },
+    { id: 'ring',        kind: 'good', name: '金の指輪',         icon: '◯', in: { gold: 2, copper: 1 },               value: 75,  desc: '銅を芯に金で仕上げた指輪' },
+    { id: 'lens',        kind: 'good', name: '水晶レンズ',       icon: '◐', in: { crystal: 2 },                       value: 160, desc: '光学機器用に磨き上げたレンズ' },
+    { id: 'necklace',    kind: 'good', name: 'ルビーの首飾り',   icon: '❦', in: { ruby: 1, gold: 2, crystal: 1 },     value: 340, desc: '金細工に宝石をあしらった逸品' },
+    { id: 'crown',       kind: 'good', name: '宝冠',             icon: '♛', in: { gold: 4, ruby: 2, crystal: 2 },     value: 900, desc: '深層の宝をすべて注ぎ込んだ至宝' },
+    { id: 'ironpick',    kind: 'tool', name: '鉄のツルハシ',     icon: '⛏', in: { iron: 3, copper: 2 },               effect: '採掘速度 ×1.6' },
+    { id: 'crystalpick', kind: 'tool', name: '水晶のツルハシ',   icon: '⛏', in: { crystal: 2, iron: 3 },  requires: 'ironpick', effect: '採掘速度 ×2.4（鉄のツルハシが必要）' },
+    { id: 'reflector',   kind: 'tool', name: '反射板付きランタン', icon: '☀', in: { copper: 2, crystal: 1 },           effect: '照らせる範囲 +30%' },
+    { id: 'fuelcan',     kind: 'use',  name: '携帯燃料',         icon: '⛽', in: { copper: 2, iron: 1 },               effect: 'その場で燃料 +30' },
+    { id: 'compass',     kind: 'use',  name: '探鉱コンパス',     icon: '✦', in: { gold: 1, iron: 2 },                 effect: 'この層の縦穴の位置を地図に表示' },
+  ];
+  function ingredientValue(r) {
+    return Object.entries(r.in).reduce((s, [k, n]) => s + ORES[ORE_INDEX[k]].value * n, 0);
   }
 
   // ---------- Procedural textures ----------
@@ -366,12 +394,20 @@
   let bigMap = false;
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
-    if (e.code === 'KeyM' && state === 'playing') bigMap = !bigMap;
+    if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.code)) e.preventDefault();
+    if (state !== 'playing') return;
+    if (e.code === 'KeyC' || e.code === 'Tab') { paused ? closeCraft() : openCraft(); return; }
+    if (e.code === 'Escape' && paused) { closeCraft(); return; }
+    if (paused && /^Digit[1-9]$/.test(e.code)) {
+      const r = RECIPES[Number(e.code.slice(5)) - 1];
+      if (r) craft(r.id);
+      return;
+    }
+    if (e.code === 'KeyM') bigMap = !bigMap;
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   canvas.addEventListener('mousedown', e => {
-    if (state !== 'playing') return;
+    if (state !== 'playing' || paused) return;
     if (e.button === 0) mouseMining = true;
     if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
       try { canvas.requestPointerLock(); } catch (_) { /* pointer lock unavailable — arrow keys still turn */ }
@@ -386,8 +422,10 @@
   let state = 'start';
   let depth = 1;
   let fuel = 100;
-  let value = 0;
   let inventory = ORES.map(() => 0);
+  let goods = {};   // crafted sellable items: id -> count
+  let tools = {};   // permanent upgrades: id -> true
+  let paused = false;
   let elapsed = 0;
   let mining = { cell: -1, progress: 0, tickT: 0 };
   let particles = [];
@@ -401,7 +439,109 @@
 
   const FUEL_DRAIN = 1.1;
 
-  function lightRadius() { return 2.3 + 7.7 * (fuel / 100); }
+  function lightRadius() { return (2.3 + 7.7 * (fuel / 100)) * (tools.reflector ? 1.3 : 1); }
+  function pickSpeed() { return tools.crystalpick ? 2.4 : tools.ironpick ? 1.6 : 1; }
+
+  function assetValue() {
+    let v = 0;
+    ORES.forEach((o, i) => { v += inventory[i] * o.value; });
+    for (const r of RECIPES) if (r.kind === 'good') v += (goods[r.id] || 0) * r.value;
+    return v;
+  }
+
+  // ---------- Crafting ----------
+  function craftBlockReason(r) {
+    for (const [k, n] of Object.entries(r.in)) if (inventory[ORE_INDEX[k]] < n) return '素材不足';
+    if (r.kind === 'tool' && tools[r.id]) return '所持済み';
+    if (r.requires && !tools[r.requires]) return '前提の道具が必要';
+    if (r.id === 'fuelcan' && fuel >= 90) return '燃料は十分';
+    if (r.id === 'compass' && level.explored[idx(Math.floor(level.shaft.x), Math.floor(level.shaft.y))]) return '縦穴は発見済み';
+    return null;
+  }
+
+  function craft(id) {
+    const r = RECIPES.find(x => x.id === id);
+    if (!r || craftBlockReason(r)) { SFX.deny(); return false; }
+    for (const [k, n] of Object.entries(r.in)) inventory[ORE_INDEX[k]] -= n;
+    if (r.kind === 'good') {
+      goods[r.id] = (goods[r.id] || 0) + 1;
+      SFX.craft(true);
+      spawnFloater(`${r.name}を製作！ 付加価値 +¥${r.value - ingredientValue(r)}`, '#ffd166');
+    } else if (r.kind === 'tool') {
+      tools[r.id] = true;
+      SFX.craft(false);
+      spawnFloater(`${r.name}を製作 — ${r.effect}`, '#9fdcff');
+    } else if (r.id === 'fuelcan') {
+      fuel = Math.min(100, fuel + 30);
+      SFX.oil();
+      spawnFloater('携帯燃料を使った — 燃料 +30', '#ffc861');
+    } else if (r.id === 'compass') {
+      level.explored[idx(Math.floor(level.shaft.x), Math.floor(level.shaft.y))] = 1;
+      SFX.craft(false);
+      spawnFloater('探鉱コンパスが縦穴を指した — 地図を確認', '#9fdcff');
+    }
+    updateInventoryUI();
+    renderCraftPanel();
+    return true;
+  }
+
+  function oreChip(key, need) {
+    const o = ORES[ORE_INDEX[key]];
+    const have = inventory[ORE_INDEX[key]];
+    const ok = have >= need;
+    return `<span class="ing ${ok ? 'ok' : 'short'}"><span class="ore-dot" style="background:rgb(${o.color.join(',')})"></span>${o.name} ${have}/${need}</span>`;
+  }
+
+  function renderCraftPanel() {
+    const list = document.getElementById('recipeList');
+    if (!list) return;
+    const sections = [
+      ['good', '工芸品 — 加工して価値を高める'],
+      ['tool', '道具 — 鉱石を消費して探索力を上げる'],
+      ['use', '消耗品 — その場で使う'],
+    ];
+    let html = '';
+    let n = 0;
+    for (const [kind, title] of sections) {
+      html += `<div class="recipe-section">${title}</div>`;
+      for (const r of RECIPES.filter(x => x.kind === kind)) {
+        n += 1;
+        const reason = craftBlockReason(r);
+        const ings = Object.entries(r.in).map(([k, c]) => oreChip(k, c)).join('');
+        let out;
+        if (kind === 'good') {
+          const added = r.value - ingredientValue(r);
+          out = `<span class="out-value">¥${r.value}</span><span class="out-added">付加価値 +¥${added}</span>${goods[r.id] ? `<span class="owned">所持 ${goods[r.id]}</span>` : ''}`;
+        } else {
+          out = `<span class="out-effect">${r.effect}</span><span class="out-cost">素材価値 −¥${ingredientValue(r)}</span>`;
+        }
+        html += `<div class="recipe ${reason ? 'blocked' : ''}">
+          <div class="r-icon">${r.icon}</div>
+          <div class="r-main">
+            <div class="r-name"><span class="r-key">${n <= 9 ? n : ''}</span>${r.name}</div>
+            <div class="r-ings">${ings}</div>
+          </div>
+          <div class="r-out">${out}</div>
+          <button class="r-btn" data-id="${r.id}" ${reason ? 'disabled' : ''}>${reason || '作る'}</button>
+        </div>`;
+      }
+    }
+    list.innerHTML = html;
+    document.getElementById('craftAsset').textContent = `現在の資産 ¥${assetValue()}`;
+  }
+
+  function openCraft() {
+    if (state !== 'playing' || deathT >= 0) return;
+    paused = true;
+    mouseMining = false;
+    if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
+    renderCraftPanel();
+    document.getElementById('craftPanel').classList.remove('hidden');
+  }
+  function closeCraft() {
+    paused = false;
+    document.getElementById('craftPanel').classList.add('hidden');
+  }
 
   function spawnFloater(text, color) {
     floaters.push({ text, color, life: 1.8, maxLife: 1.8 });
@@ -436,10 +576,12 @@
   }
 
   function startGame() {
-    depth = 1; fuel = 100; value = 0; elapsed = 0;
+    depth = 1; fuel = 100; elapsed = 0;
     inventory = ORES.map(() => 0);
+    goods = {}; tools = {};
     particles = []; floaters = [];
     deathT = -1; bigMap = false;
+    closeCraft();
     enterLevel();
     spawnFloater('地下 1 層 — 奥へ進め', '#9fdcff');
     state = 'playing';
@@ -460,11 +602,14 @@
     state = 'ended';
     if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
     SFX.gameover();
+    const value = assetValue();
+    const oreOnly = ORES.reduce((s, o, i) => s + inventory[i] * o.value, 0);
+    const goodsValue = value - oreOnly;
     const best = loadBest();
     const isBest = !best || value > best.value || (value === best.value && depth > best.depth);
     if (isBest) saveBest({ depth, value });
     document.getElementById('resultBody').textContent =
-      `ランタンの灯が消えた。\n到達: 地下 ${depth} 層　稼ぎ: ¥${value}${isBest ? '　— 自己ベスト更新！' : ''}`;
+      `ランタンの灯が消えた。\n到達: 地下 ${depth} 層　総資産: ¥${value}${isBest ? '　— 自己ベスト更新！' : ''}\n（鉱石 ¥${oreOnly} ＋ 工芸品 ¥${goodsValue}）`;
     const inv = document.getElementById('resultInv');
     inv.innerHTML = '';
     ORES.forEach((o, i) => {
@@ -473,6 +618,13 @@
       chip.innerHTML = `<span class="ore-dot" style="background:rgb(${o.color.join(',')});box-shadow:0 0 6px rgb(${o.color.join(',')})"></span>${o.name} × ${inventory[i]}`;
       inv.appendChild(chip);
     });
+    for (const r of RECIPES) {
+      if (r.kind !== 'good' || !goods[r.id]) continue;
+      const chip = document.createElement('div');
+      chip.className = 'ore-chip good';
+      chip.textContent = `${r.icon} ${r.name} × ${goods[r.id]}（¥${r.value * goods[r.id]}）`;
+      inv.appendChild(chip);
+    }
     document.getElementById('gameOverScreen').classList.remove('hidden');
     showBest();
   }
@@ -487,7 +639,21 @@
       chip.innerHTML = `<span class="ore-dot" style="background:rgb(${o.color.join(',')});box-shadow:0 0 6px rgb(${o.color.join(',')})"></span>${o.name} ${inventory[i]}`;
       el.appendChild(chip);
     });
-    document.getElementById('value').textContent = `¥${value}`;
+    for (const r of RECIPES) {
+      if (r.kind === 'good' && goods[r.id]) {
+        const chip = document.createElement('div');
+        chip.className = 'ore-chip good';
+        chip.textContent = `${r.icon} ${r.name} ${goods[r.id]}`;
+        el.appendChild(chip);
+      }
+      if (r.kind === 'tool' && tools[r.id]) {
+        const chip = document.createElement('div');
+        chip.className = 'ore-chip tool';
+        chip.textContent = `${r.icon} ${r.name}`;
+        el.appendChild(chip);
+      }
+    }
+    document.getElementById('value').textContent = `資産 ¥${assetValue()}`;
   }
 
   // ---------- Update ----------
@@ -521,7 +687,7 @@
     const cellIndex = idx(target.x, target.y);
     if (mining.cell !== cellIndex) { mining.cell = cellIndex; mining.progress = 0; }
     const hard = target.cell >= ORE_BASE ? ORES[target.cell - ORE_BASE].hard : ROCK_HARD;
-    mining.progress += dt / hard;
+    mining.progress += dt * pickSpeed() / hard;
     mining.tickT -= dt;
     if (mining.tickT <= 0) { SFX.pick(); mining.tickT = 0.26; spawnDebris(4, [150, 120, 95]); }
     if (mining.progress >= 1) {
@@ -530,7 +696,6 @@
       if (cell >= ORE_BASE) {
         const o = ORES[cell - ORE_BASE];
         inventory[cell - ORE_BASE] += 1;
-        value += o.value;
         SFX.ore(o.tier);
         spawnDebris(22, o.color);
         spawnFloater(`${o.name}を採掘！ +¥${o.value}`, `rgb(${o.color.join(',')})`);
@@ -787,12 +952,14 @@
     ctx.rotate(-0.55 + swing);
     ctx.fillStyle = '#6b4a2a';
     ctx.fillRect(-8, -150, 16, 170);
-    ctx.fillStyle = '#8a8f99';
+    ctx.fillStyle = tools.crystalpick ? '#8fe6ff' : tools.ironpick ? '#c9ced9' : '#7a746b';
+    if (tools.crystalpick) { ctx.shadowColor = '#8fe6ff'; ctx.shadowBlur = 14; }
     ctx.beginPath();
     ctx.moveTo(-70, -150); ctx.quadraticCurveTo(0, -185, 70, -150);
     ctx.lineTo(60, -138); ctx.quadraticCurveTo(0, -165, -60, -138);
     ctx.closePath();
     ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(-8, -150, 5, 170);
     ctx.restore();
@@ -853,7 +1020,7 @@
     lastTime = now;
     const t = now / 1000;
 
-    if (state === 'playing') {
+    if (state === 'playing' && !paused) {
       elapsed += dt;
       if (deathT < 0) {
         updatePlayer(dt);
@@ -877,7 +1044,7 @@
 
     if (level.grid) {
       renderWorld(t);
-      if (state === 'playing' && deathT < 0) updateMining(dt);
+      if (state === 'playing' && deathT < 0 && !paused) updateMining(dt);
       renderOverlay(t, dt);
     } else {
       ctx.fillStyle = '#000';
@@ -887,12 +1054,20 @@
 
     if (INSPECT) {
       window.__DEBUG_STATE__ = {
-        state, depth, fuel, value, inventory, player, level, target, mining,
+        state, depth, fuel, inventory, goods, tools, paused, player, level, target, mining,
+        value: assetValue(), pickSpeed: pickSpeed(), lightRadius: lightRadius(),
         setFuel: v => { fuel = v; },
+        refreshUI: () => { updateInventoryUI(); renderCraftPanel(); },
       };
     }
     requestAnimationFrame(loop);
   }
+
+  document.getElementById('recipeList').addEventListener('click', e => {
+    const b = e.target.closest('.r-btn');
+    if (b && !b.disabled) craft(b.dataset.id);
+  });
+  document.getElementById('craftClose').addEventListener('click', closeCraft);
 
   document.getElementById('startBtn').addEventListener('click', e => {
     e.currentTarget.blur();
