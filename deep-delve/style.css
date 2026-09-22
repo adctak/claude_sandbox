@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: #f3e6d0;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hud-left, .hud-right { display: flex; flex-direction: column; gap: 8px; }
+.hud-right { align-items: flex-end; margin-right: 210px; }
+
+#depth {
+  font-family: 'Orbitron', 'Noto Sans JP', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #9fdcff;
+  text-shadow: 0 0 10px rgba(120, 200, 255, 0.6);
+  letter-spacing: 1px;
+}
+
+.fuel-wrap { display: flex; flex-direction: column; gap: 4px; }
+.fuel-label { font-size: 11px; color: #d9b98a; letter-spacing: 1px; }
+
+#fuelTrack {
+  width: 200px;
+  height: 9px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 190, 110, 0.45);
+  overflow: hidden;
+}
+
+#fuelFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff7a2e, #ffc861);
+  box-shadow: 0 0 8px #ffb04a;
+}
+
+#fuelFill.low {
+  background: linear-gradient(90deg, #ff2e2e, #ff7a2e);
+  animation: blink 0.6s steps(2) infinite;
+}
+
+@keyframes blink { 50% { opacity: 0.45; } }
+
+#value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffd166;
+  text-shadow: 0 0 10px rgba(255, 209, 102, 0.6);
+}
+
+#inventory {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.ore-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 6px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 12px;
+}
+
+.ore-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+#hint {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(243, 230, 208, 0.45);
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(ellipse at center, rgba(40, 26, 14, 0.7) 0%, rgba(0, 0, 0, 0.96) 70%);
+  z-index: 10;
+  text-align: center;
+  padding: 24px;
+}
+
+.overlay.hidden { display: none; }
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(40px, 9vw, 84px);
+  color: #ffc861;
+  text-shadow: 0 0 12px #ff9a3c, 0 0 40px rgba(255, 140, 50, 0.5);
+  letter-spacing: 4px;
+}
+
+.title span {
+  color: #9fdcff;
+  text-shadow: 0 0 12px #6bc8ff, 0 0 40px rgba(100, 190, 255, 0.5);
+}
+
+.title.over {
+  color: #d9c7ad;
+  text-shadow: 0 0 12px rgba(255, 180, 90, 0.4);
+}
+
+.subtitle {
+  color: #f0dcc0;
+  font-size: 17px;
+  letter-spacing: 1px;
+  max-width: 620px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.howto {
+  color: #d9c2a0;
+  font-size: 14px;
+  line-height: 1.85;
+  max-width: 600px;
+}
+
+.howto b { color: #ffc861; }
+.small { font-size: 12px; color: #a8c8e0; opacity: 0.85; }
+
+#resultInv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 560px;
+}
+
+button#startBtn, button#restartBtn {
+  margin-top: 10px;
+  padding: 14px 40px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #1a0f05;
+  background: linear-gradient(90deg, #ffc861, #ff8a3c);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(255, 170, 80, 0.55);
+  transition: transform 0.15s ease;
+}
+
+button#startBtn:hover, button#restartBtn:hover { transform: scale(1.06); }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DEEP DELVE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-left">
+      <div id="depth">地下 1 層</div>
+      <div class="fuel-wrap">
+        <span class="fuel-label">ランタン燃料</span>
+        <div id="fuelTrack"><div id="fuelFill"></div></div>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div id="value">¥0</div>
+      <div id="inventory"></div>
+    </div>
+  </div>
+
+  <div id="hint">E / SPACE / 左クリック長押しで採掘　M で地図</div>
+
+  <div id="startScreen" class="overlay">
+    <h1 class="title">DEEP<span>DELVE</span></h1>
+    <p class="subtitle">深層採掘 — 灯りが尽きる前に、どこまで深く潜れるか</p>
+    <div class="howto">
+      <p><b>W S</b> 前進・後退　<b>A D</b> 横移動　<b>← → / マウス</b> 視点回転</p>
+      <p><b>E / SPACE / 左クリック長押し</b> 採掘（鉱石だけでなく岩も掘れる）　<b>M</b> 地図の拡大</p>
+      <p>壁に埋まった鉱石を掘って集めろ。深い層ほど貴重な鉱石が眠っている。<br>
+      青白く光る<b>縦穴</b>に入ると次の層へ降りる。</p>
+      <p>ランタンの燃料は刻一刻と減り、照らせる範囲も狭まっていく。<br>
+      落ちている<b>油瓶</b>で補給しながら、燃料が尽きる前に稼げるだけ稼げ。</p>
+      <p class="small">水晶やルビーは暗闇でもわずかに光る。見逃すな。</p>
+    </div>
+    <p id="bestRecord" class="small"></p>
+    <button id="startBtn">CLICK TO START</button>
+  </div>
+
+  <div id="gameOverScreen" class="overlay hidden">
+    <h1 class="title over">LIGHTS OUT</h1>
+    <p id="resultBody" class="subtitle"></p>
+    <div id="resultInv"></div>
+    <button id="restartBtn">RETRY</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
