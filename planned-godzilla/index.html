@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>計画的ゴジラ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-top">
+      <div id="budget">¥300</div>
+      <div id="clock">00:00</div>
+    </div>
+
+    <div id="schedule">
+      <div class="sched-title">本日の運行計画</div>
+      <div class="sched-row" id="sched-tower"><span class="sched-icon">⏳</span><span>東京タワー 破壊予定</span></div>
+      <div class="sched-row" id="sched-tocho"><span class="sched-icon">⏳</span><span>都庁 踏破予定</span></div>
+      <div class="sched-row" id="sched-skytree"><span class="sched-icon">⏳</span><span>スカイツリー 登頂・放火予定</span></div>
+    </div>
+
+    <div id="phaseBar" class="hidden">
+      <div id="phaseLabel"></div>
+      <div class="meter-track"><div id="phaseFill"></div></div>
+    </div>
+  </div>
+
+  <div id="toolbar">
+    <button id="btnTank" class="tool">
+      <span class="tool-name">戦車 設置</span>
+      <span class="tool-cost">¥120</span>
+      <div class="tool-cd"></div>
+    </button>
+    <button id="btnMissile" class="tool">
+      <span class="tool-name">ミサイル発射</span>
+      <span class="tool-cost">¥150</span>
+      <div class="tool-cd"></div>
+    </button>
+    <button id="btnReinforce" class="tool">
+      <span class="tool-name">都庁を強化</span>
+      <span class="tool-cost">¥150</span>
+      <div class="tool-cd"></div>
+    </button>
+    <button id="btnTruck" class="tool">
+      <span class="tool-name">消防車 出動</span>
+      <span class="tool-cost">¥130</span>
+      <div class="tool-cd"></div>
+    </button>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <h1 class="title">計画的<span>ゴジラ</span></h1>
+    <p class="subtitle">奴は極めて計画的である。時間通りに来て、時間通りに壊す。</p>
+    <div class="howto">
+      <p>ゴジラは決まったルートを進み、決まった時刻に<b>東京タワーを破壊</b>し、<b>都庁を踏みつけ</b>、<b>スカイツリーに登って街を焼き払う</b>——完全にスケジュール通りに。</p>
+      <p><b>戦車</b>を進路上に置いて足止めし、東京タワー破壊を<b>時間切れ</b>に追い込め。</p>
+      <p><b>都庁を強化</b>して、踏まれても崩れないようにしろ。</p>
+      <p>スカイツリーでは<b>ミサイル</b>を撃ち込んで登頂を妨害せよ。登られてしまったら<b>消防車</b>で放たれる火炎に対抗しろ。</p>
+    </div>
+    <button id="startBtn">CLICK TO START</button>
+  </div>
+
+  <div id="gameOverScreen" class="overlay hidden">
+    <h1 class="title over" id="resultTitle">RESULT</h1>
+    <p id="resultBody" class="subtitle"></p>
+    <button id="restartBtn">RETRY</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
