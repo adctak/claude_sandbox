@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #150a08;
+  font-family: 'Noto Sans JP', 'Rajdhani', sans-serif;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: #150a08;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 18px 22px;
+  pointer-events: none;
+  color: #fff3e6;
+  z-index: 5;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#lives { display: flex; gap: 8px; }
+
+#lives .heart {
+  width: 18px;
+  height: 18px;
+  background: #ff5b5b;
+  box-shadow: 0 0 10px #ff5b5b, 0 0 4px #fff inset;
+  transform: rotate(45deg);
+  border-radius: 2px 8px 2px 8px;
+}
+
+#lives .heart.lost {
+  background: rgba(255,255,255,0.08);
+  box-shadow: none;
+}
+
+#distance {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  color: #ffd166;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.7);
+  letter-spacing: 1px;
+}
+
+#distTrack {
+  position: relative;
+  margin-top: 10px;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+}
+
+#distFill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffd166, #ff5b5b);
+}
+
+#distGoalMark {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  width: 3px;
+  height: 16px;
+  background: #7dffb0;
+  box-shadow: 0 0 6px #7dffb0;
+}
+
+#warnFlash {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 20, 20, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: radial-gradient(ellipse at center, rgba(60, 20, 10, 0.55) 0%, rgba(8, 3, 2, 0.95) 75%);
+  z-index: 10;
+  text-align: center;
+  padding: 24px;
+}
+
+.overlay.hidden { display: none; }
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(40px, 9vw, 84px);
+  color: #ffd166;
+  text-shadow: 0 0 10px #ffd166, 0 0 30px #ff8a5b, 0 0 60px #ff5b5b;
+  letter-spacing: 3px;
+}
+
+.title span {
+  color: #ff5b5b;
+  text-shadow: 0 0 10px #ff5b5b, 0 0 30px #ff5b5b, 0 0 60px #ffd166;
+}
+
+.title.over {
+  color: #7dffb0;
+  text-shadow: 0 0 10px #7dffb0, 0 0 40px #7dffb0;
+}
+
+.subtitle {
+  color: #ffe9d6;
+  font-size: 17px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  max-width: 600px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.howto {
+  margin-top: 6px;
+  color: #ffcda8;
+  font-size: 14px;
+  line-height: 1.8;
+  max-width: 520px;
+}
+
+.howto b { color: #ffd166; }
+
+button#startBtn, button#restartBtn {
+  margin-top: 10px;
+  padding: 14px 40px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #180a06;
+  background: linear-gradient(90deg, #ffd166, #ff8a5b);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.6), 0 0 40px rgba(255, 91, 46, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button#startBtn:hover, button#restartBtn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 30px rgba(255, 209, 102, 0.9), 0 0 60px rgba(255, 91, 46, 0.6);
+}
