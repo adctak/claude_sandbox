@@ -86,11 +86,21 @@
   // ---------- Input ----------
   const mouse = { x: 0, y: 0 };
   let firing = false;
+  let pullingIn = false;   // ArrowDown: strengthen attraction (引力)
+  let pushingOut = false;  // ArrowUp: strengthen repulsion (斥力)
   window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
   window.addEventListener('mousedown', () => { firing = true; });
   window.addEventListener('mouseup', () => { firing = false; });
-  window.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); firing = true; } });
-  window.addEventListener('keyup', e => { if (e.key === ' ') firing = false; });
+  window.addEventListener('keydown', e => {
+    if (e.key === ' ') { e.preventDefault(); firing = true; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); pullingIn = true; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); pushingOut = true; }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.key === ' ') firing = false;
+    if (e.key === 'ArrowDown') pullingIn = false;
+    if (e.key === 'ArrowUp') pushingOut = false;
+  });
   window.addEventListener('touchmove', e => {
     const t = e.touches[0];
     mouse.x = t.clientX; mouse.y = t.clientY;
@@ -310,6 +320,8 @@
   let shakeTime = 0, shakeMag = 0;
   let flashAlpha = 0;
   let lastTime = performance.now();
+  let polarity = 1; // +1 = full attraction (引力), -1 = full repulsion (斥力)
+  const POLARITY_RATE = 1.4;
 
   function triggerShake(mag, time) {
     shakeMag = Math.max(shakeMag, mag);
@@ -333,6 +345,7 @@
     elapsed = 0;
     spawnAccum = 0;
     flashAlpha = 0;
+    polarity = 1;
     for (let i = 0; i < 2; i++) spawnEnemy();
     state = 'playing';
     document.getElementById('startScreen').classList.add('hidden');
@@ -370,6 +383,10 @@
     hole.diskAngle += dt * 1.4;
     hole.fireCooldown = Math.max(0, hole.fireCooldown - dt);
     if (firing) fireOrb();
+
+    if (pullingIn && !pushingOut) polarity = clamp(polarity + POLARITY_RATE * dt, -1, 1);
+    if (pushingOut && !pullingIn) polarity = clamp(polarity - POLARITY_RATE * dt, -1, 1);
+    if (INSPECT && typeof window.__FORCE_POLARITY__ === 'number') polarity = window.__FORCE_POLARITY__;
   }
 
   function updateEnemies(dt) {
@@ -381,10 +398,19 @@
 
       if (d < hole.radius * 0.85) {
         const t = ENEMY_TYPES[e.type];
-        spawnParticles(e.x, e.y, t.color, 14, 200, 0.5, { x: hole.x, y: hole.y });
-        addScore(t.scoreAbsorb, e.x, e.y, '#8cff9e');
-        SFX.absorbEnemy();
-        hole.radius = Math.min(hole.maxRadius, hole.radius + 0.35);
+        if (polarity >= 0) {
+          // attraction: enemies are harmless food — they feed and slightly grow the hole
+          spawnParticles(e.x, e.y, t.color, 14, 200, 0.5, { x: hole.x, y: hole.y });
+          addScore(t.scoreAbsorb, e.x, e.y, '#8cff9e');
+          SFX.absorbEnemy();
+          hole.radius = Math.min(hole.maxRadius, hole.radius + 0.35);
+        } else {
+          // repulsion: contact now counts as a hit — enemies are destroyed on touch
+          spawnParticles(e.x, e.y, t.color, 16, 260, 0.4);
+          addScore(t.scoreKill, e.x, e.y, '#6be8ff');
+          SFX.killEnemy();
+          killed += 1;
+        }
         enemies.splice(i, 1);
         continue;
       }
@@ -416,8 +442,8 @@
       e.dodgeY += (dodgeY - e.dodgeY) * clamp(dt * 8, 0, 1);
 
       const speedScale = 1 + Math.min(elapsed / 90, 0.6);
-      const vx = rx * t.radialSpeed * speedScale + tx * t.tangentSpeed * tangentFactor + e.dodgeX;
-      const vy = ry * t.radialSpeed * speedScale + ty * t.tangentSpeed * tangentFactor + e.dodgeY;
+      const vx = (rx * t.radialSpeed * speedScale + tx * t.tangentSpeed * tangentFactor) * polarity + e.dodgeX;
+      const vy = (ry * t.radialSpeed * speedScale + ty * t.tangentSpeed * tangentFactor) * polarity + e.dodgeY;
       e.x += vx * dt;
       e.y += vy * dt;
 
@@ -437,15 +463,23 @@
       const d = Math.hypot(dx, dy) || 1;
 
       if (d < hole.radius * 0.85) {
-        spawnParticles(b.x, b.y, '#ff5b5b', 26, 280, 0.6);
-        triggerShake(16, 0.4);
-        SFX.boom();
-        loseHp(1);
+        if (polarity >= 0) {
+          // attraction: the bomb gets sucked in and detonates on the core
+          spawnParticles(b.x, b.y, '#ff5b5b', 26, 280, 0.6);
+          triggerShake(16, 0.4);
+          SFX.boom();
+          loseHp(1);
+        } else {
+          // repulsion: the bomb is shoved off harmlessly before it can go off
+          spawnParticles(b.x, b.y, '#ffd166', 12, 180, 0.4);
+          addScore(20, b.x, b.y, '#ffd166');
+          SFX.defuse();
+        }
         bombs.splice(i, 1);
         continue;
       }
 
-      const speed = clamp(b.age * 16, 0, 230);
+      const speed = clamp(b.age * 16, 0, 230) * polarity;
       b.x += (dx / d) * speed * dt;
       b.y += (dy / d) * speed * dt;
     }
@@ -516,10 +550,24 @@
       d.className = 'ammo' + (i < hp ? '' : ' empty');
       row.appendChild(d);
     }
+
+    const pct = ((polarity + 1) / 2) * 100;
+    document.getElementById('polarityFill').style.left = pct + '%';
+    document.getElementById('polarityLabel').textContent = polarity >= 0 ? '引力 ATTRACT' : '斥力 REPEL';
+    document.getElementById('polarityLabel').style.color = polarity >= 0 ? '#ff9dd6' : '#6be8ff';
   }
 
   // ---------- Drawing ----------
+  function lerpRgb(t, a, b) {
+    return `${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)}`;
+  }
+
   function drawHole() {
+    // t=0 full repulsion (cyan/blue) → t=1 full attraction (purple/pink)
+    const t = (polarity + 1) / 2;
+    const cA = lerpRgb(t, [107, 232, 255], [185, 140, 255]);
+    const cB = lerpRgb(t, [80, 160, 255], [255, 107, 214]);
+
     ctx.save();
     ctx.translate(hole.x, hole.y);
 
@@ -529,9 +577,9 @@
       ctx.save();
       ctx.rotate(a0);
       const grad = ctx.createLinearGradient(-diskR, 0, diskR, 0);
-      grad.addColorStop(0, 'rgba(185,140,255,0)');
-      grad.addColorStop(0.5, `rgba(255,107,214,${0.35 - i * 0.08})`);
-      grad.addColorStop(1, 'rgba(107,232,255,0)');
+      grad.addColorStop(0, `rgba(${cA},0)`);
+      grad.addColorStop(0.5, `rgba(${cB},${0.35 - i * 0.08})`);
+      grad.addColorStop(1, `rgba(${cA},0)`);
       ctx.strokeStyle = grad;
       ctx.lineWidth = 3 - i * 0.6;
       ctx.beginPath();
@@ -541,8 +589,8 @@
     }
 
     const rim = ctx.createRadialGradient(0, 0, hole.radius * 0.6, 0, 0, hole.radius * 1.5);
-    rim.addColorStop(0, 'rgba(185,140,255,0.55)');
-    rim.addColorStop(0.6, 'rgba(255,107,214,0.25)');
+    rim.addColorStop(0, `rgba(${cA},0.55)`);
+    rim.addColorStop(0.6, `rgba(${cB},0.25)`);
     rim.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = rim;
     ctx.beginPath();
@@ -708,7 +756,7 @@
     }
 
     if (INSPECT) {
-      window.__DEBUG_STATE__ = { hole, enemies, bombs, orbs, score, killed, defused, hp, state, elapsed };
+      window.__DEBUG_STATE__ = { hole, enemies, bombs, orbs, score, killed, defused, hp, state, elapsed, polarity };
     }
 
     requestAnimationFrame(loop);
