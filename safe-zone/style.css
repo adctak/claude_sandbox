@@ -66,6 +66,7 @@ html, body {
 }
 .title span { color: #ff3b55; text-shadow: 0 0 12px #ff3b55, 0 0 40px rgba(255, 50, 80, 0.6); }
 .title.over { color: #ff5b6e; text-shadow: 0 0 14px #ff3b55; }
+.title.win { color: #ffe6a0; text-shadow: 0 0 14px #ffd166, 0 0 44px rgba(255, 180, 60, 0.6); }
 
 .subtitle { font-size: 17px; color: #e0d8ff; max-width: 620px; line-height: 1.7; white-space: pre-line; }
 .howto { font-size: 14px; line-height: 1.85; color: #cfc6f0; max-width: 580px; }

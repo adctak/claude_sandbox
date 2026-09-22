@@ -24,18 +24,18 @@
     <h1 class="title">SAFE<span>ZONE</span></h1>
     <p class="subtitle">超弾幕の中に、ただ一つだけ弾が通らない場所がある</p>
     <div class="howto">
-      <p><b>赤い円</b>が現れてから <b>3秒後</b>、画面を埋め尽くす超弾幕が始まる。</p>
-      <p>弾の軌道は赤い円の中を<b>絶対に通らない</b>。円の中に逃げ込めば生き残れる。</p>
-      <p>弾幕が止むと円は別の場所へ移動する。また3秒で辿り着け。</p>
+      <p>画面上部に鎮座する巨大ボス <b>終焉機神 OMEGA</b> が、3秒ごとに超弾幕を放つ。</p>
+      <p><b>赤い円</b>の中は弾の軌道が<b>絶対に通らない</b>安全地帯。ただし円が見えるのは<b>最初の1秒だけ</b>——弾幕の2秒前に消え、弾幕が終わるまで再表示されない。位置を覚えて飛び込め。</p>
+      <p>自機は自動でショットを撃つ。ボスの真下にいるほど削れる。HPを削り切れば勝利。</p>
       <p><b>矢印 / WASD</b> 移動　<b>SHIFT</b> 低速移動（当たり判定を表示）</p>
-      <p class="small">弾の近くをすり抜けると GRAZE で得点。ラウンドが進むほど円は小さく、弾幕は濃くなる。</p>
+      <p class="small">HPが2/3で砲台展開、1/3で暴走。弾の近くをすり抜けると GRAZE で得点。ラウンドが進むほど円は小さく、弾幕は濃くなる。</p>
     </div>
     <p id="bestRecord" class="small"></p>
     <button id="startBtn">CLICK TO START</button>
   </div>
 
   <div id="gameOverScreen" class="overlay hidden">
-    <h1 class="title over">GAME OVER</h1>
+    <h1 id="overTitle" class="title over">GAME OVER</h1>
     <p id="resultBody" class="subtitle"></p>
     <button id="restartBtn">RETRY</button>
   </div>
