@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #04030a;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: #eae6ff;
+}
+
+#game { display: block; width: 100vw; height: 100vh; background: #04030a; }
+
+#hud {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 5;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.hud-left, .hud-right { display: flex; flex-direction: column; gap: 6px; }
+.hud-right { align-items: flex-end; }
+
+#round { font-size: 18px; font-weight: 700; color: #ff5b6e; text-shadow: 0 0 10px rgba(255, 60, 90, 0.7); letter-spacing: 2px; }
+#score { font-size: 22px; font-weight: 700; color: #f4f0ff; text-shadow: 0 0 10px rgba(180, 160, 255, 0.6); }
+#graze { font-size: 12px; color: #9fdcff; letter-spacing: 1px; }
+
+#lives { display: flex; gap: 6px; }
+#lives .life {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #ff5b6e;
+  box-shadow: 0 0 8px #ff5b6e;
+}
+#lives .life.lost { background: rgba(255,255,255,0.1); box-shadow: none; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(ellipse at center, rgba(40, 10, 30, 0.7) 0%, rgba(2, 1, 6, 0.95) 70%);
+  z-index: 10;
+  text-align: center;
+  padding: 24px;
+}
+.overlay.hidden { display: none; }
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(42px, 9vw, 88px);
+  color: #f4f0ff;
+  text-shadow: 0 0 12px #b9a8ff, 0 0 40px rgba(160, 130, 255, 0.5);
+  letter-spacing: 5px;
+}
+.title span { color: #ff3b55; text-shadow: 0 0 12px #ff3b55, 0 0 40px rgba(255, 50, 80, 0.6); }
+.title.over { color: #ff5b6e; text-shadow: 0 0 14px #ff3b55; }
+
+.subtitle { font-size: 17px; color: #e0d8ff; max-width: 620px; line-height: 1.7; white-space: pre-line; }
+.howto { font-size: 14px; line-height: 1.85; color: #cfc6f0; max-width: 580px; }
+.howto b { color: #ff7a8a; }
+.small { font-size: 12px; color: #9fdcff; opacity: 0.85; }
+
+button#startBtn, button#restartBtn {
+  margin-top: 10px;
+  padding: 14px 40px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #12030a;
+  background: linear-gradient(90deg, #ff7a8a, #ff3b55);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(255, 60, 90, 0.55);
+  transition: transform 0.15s ease;
+}
+button#startBtn:hover, button#restartBtn:hover { transform: scale(1.06); }
