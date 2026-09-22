@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NEON DRIFT</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-row">
+      <div id="score">SCORE 0</div>
+      <div id="wave">WAVE 1</div>
+      <div id="combo"></div>
+    </div>
+    <div id="lives"></div>
+    <div id="dashBar"><div id="dashFill"></div></div>
+  </div>
+
+  <div id="startScreen" class="overlay">
+    <h1 class="title">NEON<span>DRIFT</span></h1>
+    <p class="subtitle">サイバー空間からの侵略者を撃破せよ</p>
+    <div class="howto">
+      <p><b>WASD / 矢印キー</b> — 移動</p>
+      <p><b>マウス</b> — 照準・自動発射</p>
+      <p><b>SHIFT / 右クリック</b> — ダッシュ（無敵）</p>
+    </div>
+    <button id="startBtn">CLICK TO START</button>
+  </div>
+
+  <div id="gameOverScreen" class="overlay hidden">
+    <h1 class="title over">GAME OVER</h1>
+    <p id="finalScore" class="subtitle"></p>
+    <button id="restartBtn">RETRY</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
