@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>GAME ARCADE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    background: #05030a;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #f0eaff;
+  }
+
+  body {
+    padding: 48px 24px 80px;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(78,242,255,0.12), transparent 60%),
+      radial-gradient(ellipse 900px 500px at 85% 0%, rgba(255,138,91,0.12), transparent 60%),
+      #05030a;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: clamp(36px, 7vw, 64px);
+    letter-spacing: 4px;
+    color: #eafcff;
+    text-shadow: 0 0 12px #4ef2ff, 0 0 40px rgba(78,242,255,0.5), 0 0 80px rgba(255,91,214,0.3);
+  }
+
+  header p {
+    margin-top: 12px;
+    color: #b9a8ff;
+    font-size: 15px;
+    letter-spacing: 1px;
+    opacity: 0.85;
+  }
+
+  .grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 26px;
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--accent-dim);
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 30px var(--accent-glow);
+  }
+
+  .card-art {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    background:
+      radial-gradient(ellipse at 50% 30%, var(--accent-glow), transparent 70%),
+      linear-gradient(160deg, var(--art-a), var(--art-b));
+    position: relative;
+  }
+
+  .card-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 3px, rgba(0,0,0,0.12) 4px);
+    pointer-events: none;
+  }
+
+  .card-body {
+    padding: 18px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 10px;
+  }
+
+  .card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--accent-glow);
+  }
+
+  .card-jp {
+    font-size: 12px;
+    color: #cfc6ff;
+    opacity: 0.7;
+    letter-spacing: 0.5px;
+    margin-top: -6px;
+  }
+
+  .card-desc {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #d8d0f5;
+    opacity: 0.9;
+    flex: 1;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0 4px;
+  }
+
+  .tag {
+    font-size: 10.5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  .play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 11px 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #05030a;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: filter 0.15s ease;
+  }
+
+  .play-btn:hover { filter: brightness(1.15); }
+
+  footer {
+    text-align: center;
+    margin-top: 64px;
+    color: #6a628f;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  footer a { color: #9d8fff; }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>GAME ARCADE</h1>
+    <p>4つのブラウザゲーム — クリックしてすぐプレイ（外部アセット不要・インストール不要）</p>
+  </header>
+
+  <div class="grid">
+
+    <a class="card" href="neon-drift/index.html" style="text-decoration:none; --accent:#4ef2ff; --accent2:#ff5ef0; --accent-dim:rgba(78,242,255,0.35); --accent-glow:rgba(78,242,255,0.45); --art-a:#1a0f2e; --art-b:#2a0a3a;">
+      <div class="card-art">🚀</div>
+      <div class="card-body">
+        <div class="card-title">NEON DRIFT</div>
+        <div class="card-jp">シンセウェイブ・シューティング</div>
+        <div class="card-desc">ネオングローに包まれた夜の街を駆けるツインスティック・シューター。ウェーブを重ねるごとに敵が増える王道アーケード。</div>
+        <div class="card-tags"><span class="tag">SHOOTER</span><span class="tag">WAVE SURVIVAL</span></div>
+        <span class="play-btn">▶ PLAY</span>
+      </div>
+    </a>
+
+    <a class="card" href="singularity/index.html" style="text-decoration:none; --accent:#b98cff; --accent2:#ff6bd6; --accent-dim:rgba(185,140,255,0.35); --accent-glow:rgba(185,140,255,0.45); --art-a:#150a2e; --art-b:#2a0a2a;">
+      <div class="card-art">🕳️</div>
+      <div class="card-body">
+        <div class="card-title">SINGULARITY</div>
+        <div class="card-jp">ブラックホール防衛ゲーム</div>
+        <div class="card-desc">中央固定のブラックホールを操り、押し寄せる敵と爆弾を迎撃。引力と斥力を切り替え、あたり判定そのものを反転させる駆け引き。</div>
+        <div class="card-tags"><span class="tag">DEFENSE</span><span class="tag">PHYSICS</span></div>
+        <span class="play-btn">▶ PLAY</span>
+      </div>
+    </a>
+
+    <a class="card" href="planned-godzilla/index.html" style="text-decoration:none; --accent:#ffd166; --accent2:#ff5b5b; --accent-dim:rgba(255,209,102,0.35); --accent-glow:rgba(255,209,102,0.4); --art-a:#2a150a; --art-b:#3a0f0a;">
+      <div class="card-art">🏙️</div>
+      <div class="card-body">
+        <div class="card-title">計画的ゴジラ</div>
+        <div class="card-jp">PLANNED GODZILLA — 単体ボス・タワーディフェンス</div>
+        <div class="card-desc">敵はゴジラただ1体。決まった時刻に東京タワーを壊し、都庁を踏み、スカイツリーで放火する——その「計画」を戦車・強化・ミサイル・消防車で狂わせろ。</div>
+        <div class="card-tags"><span class="tag">TOWER DEFENSE</span><span class="tag">SINGLE BOSS</span></div>
+        <span class="play-btn">▶ PLAY</span>
+      </div>
+    </a>
+
+    <a class="card" href="godzilla-escape-3d/index.html" style="text-decoration:none; --accent:#ff8a5b; --accent2:#ffd166; --accent-dim:rgba(255,138,91,0.35); --accent-glow:rgba(255,138,91,0.4); --art-a:#1a0806; --art-b:#3a1508;">
+      <div class="card-art">🦖</div>
+      <div class="card-body">
+        <div class="card-title">KAIJU RUN</div>
+        <div class="card-jp">一人称3D逃走パニック</div>
+        <div class="card-desc">崩れゆく街を一人称視点で駆け抜けろ。攻撃は前後左右あらゆる方向から——その場に留まれば必ず被弾する。挑発のパンチも搭載。</div>
+        <div class="card-tags"><span class="tag">3D</span><span class="tag">FIRST PERSON</span><span class="tag">EVASION</span></div>
+        <span class="play-btn">▶ PLAY</span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>
+    すべて Canvas 2D と Web Audio API のみで実装 — 外部ライブラリ・CDN依存なし
+  </footer>
+
+</body>
+</html>
