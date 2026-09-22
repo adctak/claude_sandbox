@@ -14,19 +14,29 @@
       <div id="lives"></div>
       <div id="distance">0 m</div>
     </div>
-    <div id="distTrack"><div id="distFill"></div><div id="distGoalMark"></div></div>
+    <div id="compassWrap">
+      <div id="compassArrow">▲</div>
+      <div id="compassLabel">ゴールはこちら</div>
+    </div>
   </div>
+
+  <div id="dirWarnFront" class="dirWarn front">⚠ 前方注意</div>
+  <div id="dirWarnBack" class="dirWarn back">⚠ 背後注意</div>
+  <div id="dirWarnLeft" class="dirWarn left">⚠</div>
+  <div id="dirWarnRight" class="dirWarn right">⚠</div>
+  <div id="dirWarnAoe" class="dirWarn aoe">⚠ 衝撃波！離れろ or ジャンプ</div>
 
   <div id="warnFlash"></div>
 
   <div id="startScreen" class="overlay">
     <h1 class="title">KAIJU<span>RUN</span></h1>
-    <p class="subtitle">怪獣が街を破壊し尽くす。逃げ切れ。</p>
+    <p class="subtitle">怪獣が全方位から襲いくる。逃げ惑いながらゲートを目指せ。</p>
     <div class="howto">
-      <p><b>← → / A D</b> — レーン移動</p>
-      <p><b>↑ / W / SPACE</b> — ジャンプ</p>
-      <p>瓦礫・炎・車の残骸は避けろ（移動でもジャンプでも回避可）。<br>
-      怪獣の<b>尻尾払い</b>はジャンプでかわし、<b>踏みつけ</b>からはレーン移動で逃げろ。</p>
+      <p><b>W S</b> — 前進・後退　<b>A D</b> — 左右へ移動</p>
+      <p><b>← →</b> — 視点を回転　<b>↑ / SPACE</b> — ジャンプ</p>
+      <p>攻撃は前後左右、あらゆる方向から来る。警告が出た方向の逆へ動いて距離を取れ。<br>
+      全方位の<b>衝撃波</b>だけは、離れるかジャンプでかわせる。</p>
+      <p>瓦礫や火災には触れるな。奥に見える<b>光る門</b>まで辿り着けば脱出成功。</p>
     </div>
     <button id="startBtn">CLICK TO START</button>
   </div>

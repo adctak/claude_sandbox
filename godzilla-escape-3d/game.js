@@ -18,7 +18,7 @@
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    FOCAL = H * 1.1;
+    FOCAL = H * 1.05;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -72,11 +72,10 @@
   const SFX = {
     jump: () => beep({ freq: 420, dur: 0.1, type: 'square', gain: 0.06, slide: 220 }),
     hit: () => { noiseBurst({ dur: 0.3, gain: 0.2 }); beep({ freq: 140, dur: 0.25, type: 'sawtooth', gain: 0.14, slide: -80 }); },
-    stomp: () => { noiseBurst({ dur: 0.4, gain: 0.26, filterFreq: 500 }); beep({ freq: 60, dur: 0.35, type: 'sine', gain: 0.22 }); },
+    impact: () => { noiseBurst({ dur: 0.4, gain: 0.26, filterFreq: 500 }); beep({ freq: 60, dur: 0.35, type: 'sine', gain: 0.22 }); },
     roar: () => { beep({ freq: 90, dur: 0.5, type: 'sawtooth', gain: 0.13, slide: 40 }); beep({ freq: 55, dur: 0.6, type: 'sawtooth', gain: 0.11, slide: -20, delay: 0.1 }); },
-    whoosh: () => beep({ freq: 200, dur: 0.25, type: 'sawtooth', gain: 0.1, slide: 300 }),
+    warn: () => beep({ freq: 700, dur: 0.08, type: 'square', gain: 0.05, slide: -200 }),
     collapse: () => { noiseBurst({ dur: 0.5, gain: 0.2, filterFreq: 700 }); beep({ freq: 80, dur: 0.4, type: 'sawtooth', gain: 0.12, slide: -40 }); },
-    step: () => beep({ freq: 180, dur: 0.04, type: 'square', gain: 0.02 }),
     gameover: () => { beep({ freq: 300, dur: 0.4, type: 'sawtooth', gain: 0.12, slide: -250 }); beep({ freq: 200, dur: 0.5, type: 'sawtooth', gain: 0.12, slide: -150, delay: 0.15 }); },
     victory: () => { beep({ freq: 440, dur: 0.15, type: 'triangle', gain: 0.1 }); beep({ freq: 550, dur: 0.15, type: 'triangle', gain: 0.1, delay: 0.15 }); beep({ freq: 660, dur: 0.3, type: 'triangle', gain: 0.1, delay: 0.3 }); },
   };
@@ -85,160 +84,161 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function lerp(a, b, t) { return a + (b - a) * t; }
-
-  // ---------- 3D projection ----------
-  // World: X = lateral, Y = height (0 = ground), Z = forward distance from camera (>0 ahead).
-  function project(x, y, z, cam) {
-    const rx = x - cam.x;
-    const ry = y - cam.y;
-    const rz = z;
-    if (rz < 0.3) return null;
-    const scale = FOCAL / rz;
-    return { sx: W / 2 + (rx - cam.shiftX) * scale, sy: H / 2 - ry * scale + cam.shiftY, scale, z: rz };
+  function angDiff(a, b) {
+    let d = a - b;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return d;
   }
 
   // ---------- World constants ----------
-  const LANES = [-2.2, 0, 2.2];
-  const ROAD_HALF = 3.6;
-  const SPAWN_Z = 70;
-  const DESPAWN_Z = -3;
+  const ARENA_HALF = 24;
+  const ARENA_START_Z = 4;
+  const GOAL_Z = 92;
+  const GOAL_RADIUS = 5;
   const EYE_HEIGHT = 1.65;
+  const MOVE_SPEED = 6.2, TURN_SPEED = 2.5;
   const JUMP_V = 6.6, GRAVITY = 19;
-  const GOAL_DISTANCE = 1300;
+
+  // ---------- Player ----------
+  const player = {
+    px: 0, pz: ARENA_START_Z, yaw: 0,
+    y: 0, vy: 0, jumping: false,
+    hp: 3, maxHp: 3, invuln: 0, stumble: 0, bob: 0,
+  };
 
   // ---------- Input ----------
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.key] = true;
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' '].includes(e.key)) e.preventDefault();
-    if (state === 'playing') {
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') changeLane(-1);
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') changeLane(1);
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') doJump();
-    }
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
+    if (state === 'playing' && (e.key === 'ArrowUp' || e.key === ' ')) doJump();
   });
   window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-  let touchStartX = null;
-  canvas.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    touchStartX = t.clientX;
-    if (t.clientY < H * 0.5) doJump();
-  }, { passive: true });
-  canvas.addEventListener('touchend', e => {
-    if (touchStartX === null) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartX;
-    if (dx > 40) changeLane(1);
-    else if (dx < -40) changeLane(-1);
-    touchStartX = null;
-  }, { passive: true });
-
-  // ---------- Player ----------
-  const player = {
-    lane: 1, // index into LANES
-    x: 0,
-    y: 0,
-    vy: 0,
-    jumping: false,
-    hp: 3,
-    maxHp: 3,
-    invuln: 0,
-    stumble: 0,
-    bob: 0,
-  };
-
-  function changeLane(dir) {
-    if (state !== 'playing') return;
-    player.lane = clamp(player.lane + dir, 0, LANES.length - 1);
-  }
   function doJump() {
-    if (state !== 'playing' || player.jumping) return;
+    if (player.jumping) return;
     player.jumping = true;
     player.vy = JUMP_V;
     SFX.jump();
   }
 
-  // ---------- Camera ----------
-  const camera = { x: 0, y: EYE_HEIGHT, shiftX: 0, shiftY: 0 };
-
-  // ---------- Buildings (scenery, recycled) ----------
-  let buildings = [];
-  function makeBuilding(z, side) {
-    const w = rand(4, 7);
-    const d = rand(4, 6);
-    const h = rand(8, 34);
-    const x = side * (ROAD_HALF + w / 2 + rand(0.5, 3));
-    const tint = rand(-8, 10);
-    return { x, z, w, d, h, side, lit: Math.random() < 0.45, damaged: false, fireT: 0, tint };
+  // ---------- 3D projection (camera = player position + yaw) ----------
+  function project(wx, wy, wz) {
+    const dx = wx - player.px;
+    const dz = wz - player.pz;
+    const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
+    const forward = dx * sy + dz * cy;
+    const right = dx * cy - dz * sy;
+    if (forward < 0.25) return null;
+    const scale = FOCAL / forward;
+    const bobY = player.jumping ? 0 : Math.sin(player.bob) * 0.05;
+    const eyeY = EYE_HEIGHT + player.y * 0.9 + bobY;
+    return { sx: W / 2 + right * scale, sy: H / 2 - (wy - eyeY) * scale, scale, z: forward };
   }
+
+  // relative bearing of a world point from the player's current facing: 'front'|'back'|'left'|'right'
+  function bearingOf(wx, wz) {
+    const dx = wx - player.px, dz = wz - player.pz;
+    const ang = Math.atan2(dx, dz); // 0 = +Z, positive toward +X
+    const rel = angDiff(ang, player.yaw);
+    const deg = rel * 180 / Math.PI;
+    if (deg > -45 && deg <= 45) return 'front';
+    if (deg > 45 && deg <= 135) return 'right';
+    if (deg > -135 && deg <= -45) return 'left';
+    return 'back';
+  }
+
+  // ---------- Buildings (static scenery around the arena) ----------
+  let buildings = [];
   function initBuildings() {
     buildings = [];
-    for (let z = 8; z < SPAWN_Z; z += rand(9, 15)) {
-      buildings.push(makeBuilding(z, -1));
-      buildings.push(makeBuilding(z + rand(-2, 2), 1));
+    for (let i = 0; i < 26; i++) {
+      const z = rand(0, GOAL_Z + 15);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const w = rand(4, 7), h = rand(8, 32);
+      const x = side * rand(ARENA_HALF + 3, ARENA_HALF + 16);
+      buildings.push({ x, z, w, h, lit: Math.random() < 0.45, damaged: false, fireT: 0, tint: rand(-8, 10) });
     }
   }
 
-  // ---------- Obstacles ----------
+  // ---------- Static ground obstacles ----------
   const OBSTACLE_TYPES = {
-    rubble: { color: '#8a7a68', h: 1.1, w: 1.6 },
-    fire: { color: '#ff6b3d', h: 1.6, w: 1.7 },
-    car: { color: '#5b6b7a', h: 1.4, w: 1.9 },
+    rubble: { color: '#8a7a68', h: 1.1, w: 1.8, r: 1.1 },
+    fire: { color: '#ff6b3d', h: 1.6, w: 1.9, r: 1.1 },
+    car: { color: '#5b6b7a', h: 1.4, w: 2.1, r: 1.3 },
   };
   let obstacles = [];
-  let obstacleId = 0;
-  let obstacleSpawnZ = 40;
-
-  function spawnObstacle() {
+  function initObstacles() {
+    obstacles = [];
     const types = Object.keys(OBSTACLE_TYPES);
-    const type = types[Math.floor(rand(0, types.length))];
-    const lane = Math.floor(rand(0, LANES.length));
-    obstacles.push({ id: obstacleId++, type, lane, z: obstacleSpawnZ, resolved: false, kind: 'ground' });
+    for (let i = 0; i < 15; i++) {
+      const type = types[Math.floor(rand(0, types.length))];
+      const x = rand(-ARENA_HALF + 3, ARENA_HALF - 3);
+      const z = rand(ARENA_START_Z + 10, GOAL_Z - 8);
+      obstacles.push({ type, x, z });
+    }
   }
 
-  // ---------- Godzilla & set-piece hazards ----------
+  // ---------- Godzilla (roaming atmosphere) ----------
   const godzilla = {
-    x: 5.5,
-    z: 26,
-    side: 1,
-    walkPhase: 0,
-    tailSwingT: -1,
-    stompT: -1,
-    stompLane: 0,
-    roarT: 0,
+    x: 14, z: 40, targetX: 14, targetZ: 40, roarT: 0, walkPhase: 0,
+  };
+  function pickGodzillaTarget() {
+    godzilla.targetX = rand(-ARENA_HALF - 6, ARENA_HALF + 6);
+    godzilla.targetZ = rand(10, GOAL_Z + 10);
+  }
+
+  // ---------- Hazards (directional attacks anchored in world space) ----------
+  // kind: 'front' | 'back' | 'left' | 'right' | 'aoe'
+  let hazard = null; // { kind, cx, cz, radius, t, dur, resolved }
+  let hazardTimer = 4;
+  let hazardMin = 4.5, hazardMax = 7;
+
+  const DIR_VEC = {
+    front: () => [Math.sin(player.yaw), Math.cos(player.yaw)],
+    back: () => [-Math.sin(player.yaw), -Math.cos(player.yaw)],
+    left: () => [-Math.cos(player.yaw), Math.sin(player.yaw)],
+    right: () => [Math.cos(player.yaw), -Math.sin(player.yaw)],
   };
 
-  let hazardTimer = 4;
-  let nextHazardMin = 6, nextHazardMax = 10;
-
   function scheduleHazard() {
+    if (hazard) return;
     const roll = Math.random();
-    if (roll < 0.4) {
-      godzilla.tailSwingT = 0;
-      spawnFloaterScreen('尻尾が来る！ジャンプ！', '#ffd166');
-      SFX.whoosh();
-    } else if (roll < 0.8) {
-      godzilla.stompT = 0;
-      godzilla.stompLane = Math.floor(rand(0, LANES.length));
-      spawnFloaterScreen('踏まれるぞ！レーン移動！', '#ff8a5b');
+    let kind;
+    if (roll < 0.22) kind = 'front';
+    else if (roll < 0.44) kind = 'back';
+    else if (roll < 0.66) kind = 'left';
+    else if (roll < 0.85) kind = 'right';
+    else kind = 'aoe';
+
+    if (kind === 'aoe') {
+      hazard = { kind, cx: player.px, cz: player.pz, radius: 5.5, t: 0, dur: 1.3, resolved: false };
+      godzilla.roarT = 1.3;
+      SFX.roar();
     } else {
-      triggerBuildingCollapse();
+      // The zone targets where the player IS RIGHT NOW (must move away to dodge); the small
+      // offset in the telegraphed direction is only there so the ground marker reads clearly
+      // as "coming from that side," not to make standing still safe.
+      const [dx, dz] = DIR_VEC[kind]();
+      const radius = kind === 'back' ? 3.4 : 3.0;
+      hazard = { kind, cx: player.px + dx * (radius * 0.35), cz: player.pz + dz * (radius * 0.35), radius, t: 0, dur: 1.0, resolved: false };
+      SFX.warn();
     }
   }
 
   function triggerBuildingCollapse() {
-    const candidates = buildings.filter(b => b.z > 15 && b.z < 45 && !b.damaged);
+    const candidates = buildings.filter(b => !b.damaged && Math.abs(b.z - player.pz) < 30);
     if (candidates.length) {
       const b = candidates[Math.floor(rand(0, candidates.length))];
       b.damaged = true;
       b.fireT = 3;
       SFX.collapse();
-      triggerShake(6, 0.3);
+      triggerShake(5, 0.25);
     }
   }
 
-  // ---------- Particles & floaters (world-space) ----------
+  // ---------- Particles ----------
   let particles = [];
   function spawnParticles3D(x, y, z, color, count = 12, speed = 4, life = 0.7) {
     for (let i = 0; i < count; i++) {
@@ -246,51 +246,23 @@
       const s = rand(speed * 0.3, speed);
       particles.push({
         x, y, z,
-        vx: Math.cos(a) * s, vy: rand(1, 4), vz: Math.sin(a) * s * 0.4,
+        vx: Math.cos(a) * s, vy: rand(1, 4), vz: Math.sin(a) * s,
         life: rand(life * 0.5, life), maxLife: life, color, r: rand(2, 5),
       });
     }
   }
-  function updateParticles(dt, worldSpeed) {
+  function updateParticles(dt) {
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.vy -= 9 * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-      p.z -= worldSpeed * dt;
       p.life -= dt;
       if (p.life <= 0 || p.y < -1) particles.splice(i, 1);
     }
   }
 
-  // screen-space floaters (fixed UI position, not world-projected) for readability of warnings
-  let screenFloaters = [];
-  function spawnFloaterScreen(text, color) {
-    screenFloaters.push({ text, color, life: 1.4, maxLife: 1.4 });
-  }
-  function updateScreenFloaters(dt) {
-    for (let i = screenFloaters.length - 1; i >= 0; i--) {
-      screenFloaters[i].life -= dt;
-      if (screenFloaters[i].life <= 0) screenFloaters.splice(i, 1);
-    }
-  }
-  function drawScreenFloaters() {
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 26px "Noto Sans JP", sans-serif';
-    screenFloaters.forEach((f, i) => {
-      ctx.globalAlpha = clamp(f.life / f.maxLife, 0, 1);
-      ctx.fillStyle = f.color;
-      ctx.shadowColor = f.color;
-      ctx.shadowBlur = 12;
-      ctx.fillText(f.text, W / 2, H * 0.3 - i * 34);
-    });
-    ctx.restore();
-  }
-
   // ---------- Game state ----------
   let state = 'start'; // start | playing | ended
-  let distance = 0;
-  let speed = 9;
   let elapsed = 0;
   let shakeTime = 0, shakeMag = 0;
   let flashAlpha = 0;
@@ -302,16 +274,19 @@
   }
 
   function resetGame() {
-    player.lane = 1; player.x = LANES[1]; player.y = 0; player.vy = 0;
-    player.jumping = false; player.hp = player.maxHp; player.invuln = 1.0; player.stumble = 0;
-    obstacles = []; particles = []; screenFloaters = [];
-    obstacleSpawnZ = 40;
-    godzilla.z = 26; godzilla.tailSwingT = -1; godzilla.stompT = -1; godzilla.roarT = 0;
-    hazardTimer = 4;
-    distance = 0; speed = 9; elapsed = 0;
+    player.px = rand(-4, 4); player.pz = ARENA_START_Z; player.yaw = 0;
+    player.y = 0; player.vy = 0; player.jumping = false;
+    player.hp = player.maxHp; player.invuln = 1.0; player.stumble = 0; player.bob = 0;
+    particles = [];
+    hazard = null; hazardTimer = 4; hazardMin = 4.5; hazardMax = 7;
+    godzilla.x = 14; godzilla.z = 44; godzilla.roarT = 0;
+    pickGodzillaTarget();
+    elapsed = 0;
     flashAlpha = 0;
     initBuildings();
+    initObstacles();
     updateLivesUI();
+    hideAllDirWarn();
   }
 
   function startGame() {
@@ -335,16 +310,17 @@
     state = 'ended';
     const title = document.getElementById('resultTitle');
     const body = document.getElementById('resultBody');
+    hideAllDirWarn();
     if (won) {
       title.textContent = 'ESCAPED';
       title.classList.add('over');
       SFX.victory();
-      body.textContent = `怪獣の脅威圏を脱出した。走行距離: ${Math.floor(distance)}m`;
+      body.textContent = `全方位からの猛攻を潜り抜け、ゲートに辿り着いた。生存時間: ${Math.floor(elapsed)}秒`;
     } else {
       title.textContent = 'CAUGHT';
       title.classList.remove('over');
       SFX.gameover();
-      body.textContent = `怪獣の跳梁を逃げ切れなかった。走行距離: ${Math.floor(distance)}m`;
+      body.textContent = `怪獣の猛威に飲み込まれた。生存時間: ${Math.floor(elapsed)}秒`;
     }
     document.getElementById('gameOverScreen').classList.remove('hidden');
   }
@@ -363,14 +339,32 @@
 
   // ---------- Update ----------
   function updatePlayer(dt) {
-    const targetX = LANES[player.lane];
-    player.x = lerp(player.x, targetX, clamp(dt * 10, 0, 1));
+    if (keys['ArrowLeft']) player.yaw -= TURN_SPEED * dt;
+    if (keys['ArrowRight']) player.yaw += TURN_SPEED * dt;
+
+    const moveMul = player.stumble > 0 ? 0.4 : 1;
+    let mx = 0, mz = 0;
+    const fx = Math.sin(player.yaw), fz = Math.cos(player.yaw);
+    const rx = Math.cos(player.yaw), rz = -Math.sin(player.yaw);
+    if (keys['w'] || keys['W']) { mx += fx; mz += fz; }
+    if (keys['s'] || keys['S']) { mx -= fx; mz -= fz; }
+    if (keys['d'] || keys['D']) { mx += rx; mz += rz; }
+    if (keys['a'] || keys['A']) { mx -= rx; mz -= rz; }
+    const mlen = Math.hypot(mx, mz);
+    let moving = false;
+    if (mlen > 0.01) {
+      moving = true;
+      player.px += (mx / mlen) * MOVE_SPEED * moveMul * dt;
+      player.pz += (mz / mlen) * MOVE_SPEED * moveMul * dt;
+    }
+    player.px = clamp(player.px, -ARENA_HALF + 1, ARENA_HALF - 1);
+    player.pz = clamp(player.pz, 0.5, GOAL_Z + 8);
 
     if (player.jumping) {
       player.y += player.vy * dt;
       player.vy -= GRAVITY * dt;
       if (player.y <= 0) { player.y = 0; player.vy = 0; player.jumping = false; }
-    } else {
+    } else if (moving) {
       player.bob += dt * (player.stumble > 0 ? 6 : 11);
     }
 
@@ -378,97 +372,75 @@
     player.stumble = Math.max(0, player.stumble - dt);
   }
 
-  function updateWorldScroll(dt) {
-    const effSpeed = speed * (player.stumble > 0 ? 0.35 : 1);
-    distance += effSpeed * dt;
-    speed = Math.min(20, 9 + distance * 0.01);
-
-    for (const b of buildings) b.z -= effSpeed * dt;
-    buildings = buildings.filter(b => b.z > DESPAWN_Z - 10);
-    let maxFarZ = 0;
-    for (const b of buildings) maxFarZ = Math.max(maxFarZ, b.z);
-    while (maxFarZ < SPAWN_Z) {
-      maxFarZ += rand(9, 15);
-      buildings.push(makeBuilding(maxFarZ, -1));
-      buildings.push(makeBuilding(maxFarZ + rand(-2, 2), 1));
+  function updateObstacleCollisions() {
+    if (player.invuln > 0) return;
+    for (const o of obstacles) {
+      const t = OBSTACLE_TYPES[o.type];
+      const d = Math.hypot(player.px - o.x, player.pz - o.z);
+      if (d < t.r + 0.5 && player.y < 0.5) {
+        takeDamage();
+        spawnParticles3D(o.x, 0.5, o.z, t.color, 12, 3.2, 0.5);
+        break;
+      }
     }
-    for (const b of buildings) if (b.fireT > 0) b.fireT -= dt;
+  }
 
-    for (const o of obstacles) o.z -= effSpeed * dt;
-    obstacles = obstacles.filter(o => o.z > DESPAWN_Z);
-    obstacleSpawnZ -= effSpeed * dt;
-    if (obstacleSpawnZ < SPAWN_Z - rand(14, 22)) {
-      obstacleSpawnZ = SPAWN_Z;
-      if (Math.random() < 0.82) spawnObstacle();
-    }
-
-    godzilla.z = 24 + Math.sin(elapsed * 0.15) * 4;
-    godzilla.walkPhase += dt * 3;
-
-    hazardTimer -= dt;
-    if (hazardTimer <= 0) {
-      scheduleHazard();
-      hazardTimer = rand(nextHazardMin, nextHazardMax);
-      nextHazardMin = Math.max(3.5, nextHazardMin - 0.15);
-      nextHazardMax = Math.max(5.5, nextHazardMax - 0.15);
-    }
-
-    if (godzilla.tailSwingT >= 0) {
-      godzilla.tailSwingT += dt;
-      if (godzilla.tailSwingT > 1.1) godzilla.tailSwingT = -1;
-    }
-    if (godzilla.stompT >= 0) {
-      godzilla.stompT += dt;
-      if (godzilla.stompT > 1.3) godzilla.stompT = -1;
-    }
+  function updateGodzilla(dt) {
+    godzilla.walkPhase += dt * 2;
+    const dx = godzilla.targetX - godzilla.x, dz = godzilla.targetZ - godzilla.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 2) pickGodzillaTarget();
+    else { godzilla.x += (dx / d) * 3.5 * dt; godzilla.z += (dz / d) * 3.5 * dt; }
     if (godzilla.roarT > 0) godzilla.roarT -= dt;
   }
 
-  function checkCollisions() {
-    const airborne = player.y > 0.55;
-
-    for (const o of obstacles) {
-      if (o.resolved) continue;
-      if (o.z < 0.6 && o.z > -0.6) {
-        o.resolved = true;
-        if (o.lane === player.lane && !airborne) {
-          takeDamage();
-          spawnParticles3D(LANES[o.lane], 0.5, 0, OBSTACLE_TYPES[o.type].color, 14, 3.5, 0.6);
-        }
-      }
-    }
-
-    // tail sweep: hits ALL lanes near the player unless airborne, active during a short window
-    if (godzilla.tailSwingT >= 0.45 && godzilla.tailSwingT <= 0.65 && !godzilla._tailResolved) {
-      godzilla._tailResolved = true;
-      if (!airborne) takeDamage();
-    }
-    if (godzilla.tailSwingT < 0) godzilla._tailResolved = false;
-
-    // foot stomp: hits one lane hard near the player; jumping does NOT help, only lane change does
-    if (godzilla.stompT >= 0.55 && godzilla.stompT <= 0.75 && !godzilla._stompResolved) {
-      godzilla._stompResolved = true;
-      SFX.stomp();
-      triggerShake(14, 0.4);
-      if (player.lane === godzilla.stompLane) takeDamage();
-    }
-    if (godzilla.stompT < 0) { godzilla._stompResolved = false; godzilla._dustSpawned = false; }
+  function hideAllDirWarn() {
+    ['dirWarnFront', 'dirWarnBack', 'dirWarnLeft', 'dirWarnRight', 'dirWarnAoe'].forEach(id =>
+      document.getElementById(id).classList.remove('show'));
   }
 
-  function updateHud() {
-    document.getElementById('distance').textContent = `${Math.floor(distance)} m`;
-    document.getElementById('distFill').style.width = clamp((distance / GOAL_DISTANCE) * 100, 0, 100) + '%';
+  function updateHazard(dt) {
+    hazardTimer -= dt;
+    if (hazardTimer <= 0 && !hazard) {
+      if (Math.random() < 0.12) triggerBuildingCollapse();
+      else scheduleHazard();
+      hazardTimer = rand(hazardMin, hazardMax);
+      hazardMin = Math.max(3, hazardMin - 0.12);
+      hazardMax = Math.max(4.2, hazardMax - 0.12);
+    }
+
+    hideAllDirWarn();
+    if (!hazard) return;
+
+    hazard.t += dt;
+    const displayKind = hazard.kind === 'aoe' ? 'aoe' : bearingOf(hazard.cx, hazard.cz);
+    const idMap = { front: 'dirWarnFront', back: 'dirWarnBack', left: 'dirWarnLeft', right: 'dirWarnRight', aoe: 'dirWarnAoe' };
+    document.getElementById(idMap[displayKind]).classList.add('show');
+
+    if (hazard.t >= hazard.dur) {
+      const d = Math.hypot(player.px - hazard.cx, player.pz - hazard.cz);
+      const jumpHelps = hazard.kind === 'back' || hazard.kind === 'aoe';
+      const airborne = player.y > 0.5;
+      const safe = d > hazard.radius || (jumpHelps && airborne);
+      SFX.impact();
+      triggerShake(hazard.kind === 'aoe' ? 14 : 9, 0.35);
+      spawnParticles3D(hazard.cx, 0.3, hazard.cz, hazard.kind === 'aoe' ? '#ff8a5b' : '#ff5b5b', 20, 4.5, 0.6);
+      if (!safe) takeDamage();
+      hazard = null;
+    }
+  }
+
+  function updateCompass() {
+    const dx = 0 - player.px, dz = GOAL_Z - player.pz;
+    const ang = Math.atan2(dx, dz);
+    const rel = angDiff(ang, player.yaw);
+    const arrow = document.getElementById('compassArrow');
+    arrow.style.transform = `rotate(${rel}rad)`;
+    const dist = Math.hypot(dx, dz);
+    document.getElementById('compassLabel').textContent = `ゲートまで ${Math.max(0, Math.floor(dist))}m`;
   }
 
   // ---------- Drawing ----------
-  function computeCamera() {
-    const bobY = player.jumping ? 0 : Math.sin(player.bob) * 0.05;
-    camera.x = player.x;
-    camera.y = EYE_HEIGHT + player.y * 0.9 + bobY;
-    camera.shiftX = Math.sin(player.bob * 0.5) * 0.03;
-    camera.shiftY = 0;
-  }
-
   function drawSky() {
     const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, '#2a0f0a');
@@ -476,102 +448,85 @@
     grad.addColorStop(1, '#1a0806');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawGround() {
+    const horizon = H / 2;
+    const grad = ctx.createLinearGradient(0, horizon, 0, H);
+    grad.addColorStop(0, '#241210');
+    grad.addColorStop(1, '#0c0504');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, horizon, W, H - horizon);
+  }
+
+  function drawGoalGate() {
+    const halfW = 4.5, h = 7;
+    const cx = 0, cz = GOAL_Z;
+    const tl = project(cx - halfW, h, cz);
+    const tr = project(cx + halfW, h, cz);
+    const bl = project(cx - halfW, 0, cz);
+    const br = project(cx + halfW, 0, cz);
+    if (!tl || !tr || !bl || !br) return;
+    const pulse = 0.5 + Math.sin(elapsed * 3) * 0.2;
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 230, 200, 0.85)';
-    ctx.shadowColor = '#ffe6c8';
-    ctx.shadowBlur = 30;
+    ctx.strokeStyle = `rgba(125,255,176,${pulse})`;
+    ctx.shadowColor = '#7dffb0';
+    ctx.shadowBlur = 20;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(W * 0.8, H * 0.2, 28, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawRoad() {
-    const near = project(-ROAD_HALF, 0, 0.5, camera);
-    const nearR = project(ROAD_HALF, 0, 0.5, camera);
-    const far = project(-ROAD_HALF, 0, SPAWN_Z, camera);
-    const farR = project(ROAD_HALF, 0, SPAWN_Z, camera);
-    if (!near || !nearR || !far || !farR) return;
-    ctx.fillStyle = '#171012';
-    ctx.beginPath();
-    ctx.moveTo(near.sx, Math.min(H, near.sy));
-    ctx.lineTo(nearR.sx, Math.min(H, nearR.sy));
-    ctx.lineTo(farR.sx, farR.sy);
-    ctx.lineTo(far.sx, far.sy);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)';
-    ctx.lineWidth = 2;
-    const laneBounds = [-ROAD_HALF, -1.1, 1.1, ROAD_HALF];
-    for (const lx of laneBounds) {
-      const p0 = project(lx, 0, 0.5, camera);
-      const p1 = project(lx, 0, SPAWN_Z, camera);
-      if (!p0 || !p1) continue;
-      ctx.beginPath();
-      ctx.moveTo(p0.sx, Math.min(H, p0.sy));
-      ctx.lineTo(p1.sx, p1.sy);
-      ctx.stroke();
-    }
-  }
-
-  function drawBuildingObj(b) {
-    const faceZ = b.z - b.d / 2;
-    if (faceZ < 0.3) return;
-    const halfW = b.w / 2;
-    const tl = project(b.x - halfW, b.h, faceZ, camera);
-    const tr = project(b.x + halfW, b.h, faceZ, camera);
-    const br = project(b.x + halfW, 0, faceZ, camera);
-    const bl = project(b.x - halfW, 0, faceZ, camera);
-    if (!tl || !tr || !br || !bl) return;
-    const fog = clamp(1 - faceZ / SPAWN_Z, 0.15, 1);
-    const t = b.tint || 0;
-    const baseColor = b.damaged ? [40, 24, 20] : [26 + t, 16 + t * 0.6, 22 + t * 0.8];
-    ctx.fillStyle = `rgba(${baseColor[0]},${baseColor[1]},${baseColor[2]},${fog})`;
+    ctx.moveTo(bl.sx, bl.sy); ctx.lineTo(tl.sx, tl.sy); ctx.lineTo(tr.sx, tr.sy); ctx.lineTo(br.sx, br.sy);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(125,255,176,${0.12 * pulse})`;
     ctx.beginPath();
     ctx.moveTo(tl.sx, tl.sy); ctx.lineTo(tr.sx, tr.sy); ctx.lineTo(br.sx, br.sy); ctx.lineTo(bl.sx, bl.sy);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = `rgba(0,0,0,${0.5 * fog})`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.restore();
+  }
 
+  function drawBuildingObj(b) {
+    const p = project(b.x, b.h / 2, b.z);
+    if (!p) return;
+    const w = b.w * p.scale, h = b.h * p.scale;
+    const fog = clamp(1 - p.z / 100, 0.15, 1);
+    const t = b.tint;
+    const baseColor = b.damaged ? [40, 24, 20] : [26 + t, 16 + t * 0.6, 22 + t * 0.8];
+    ctx.save();
+    ctx.globalAlpha = fog;
+    ctx.fillStyle = `rgb(${baseColor[0]},${baseColor[1]},${baseColor[2]})`;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(p.sx - w / 2, p.sy - h / 2, w, h);
+    ctx.strokeRect(p.sx - w / 2, p.sy - h / 2, w, h);
     if (b.lit && !b.damaged) {
-      ctx.fillStyle = `rgba(255, 209, 102, ${0.35 * fog})`;
-      const rows = 5, cols = 4;
-      for (let r = 1; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
+      ctx.fillStyle = 'rgba(255,209,102,0.35)';
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 4; c++) {
           if ((r + c) % 3 === 0) continue;
-          const wx = lerp(tl.sx, tr.sx, (c + 0.5) / cols);
-          const wyTop = lerp(tl.sy, bl.sy, r / rows);
-          const wSize = Math.max(1, (tr.sx - tl.sx) / cols * 0.4);
-          ctx.fillRect(wx - wSize / 2, wyTop, wSize, wSize);
+          const wx = p.sx - w / 2 + (c + 0.5) * (w / 4);
+          const wy = p.sy - h / 2 + (r + 0.5) * (h / 5);
+          ctx.fillRect(wx - w / 16, wy - h / 20, w / 8, h / 10);
         }
       }
     }
-
     if (b.damaged && b.fireT > 0) {
-      ctx.save();
       ctx.globalAlpha = clamp(b.fireT / 3, 0, 1) * fog;
       ctx.fillStyle = '#ff6b3d';
       ctx.shadowColor = '#ff6b3d';
       ctx.shadowBlur = 20;
-      const fx = (tl.sx + tr.sx) / 2, fy = (tl.sy + bl.sy) / 2;
       ctx.beginPath();
-      ctx.arc(fx, fy, Math.max(4, (tr.sx - tl.sx) * 0.25), 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, Math.max(4, w * 0.25), 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     }
+    ctx.restore();
   }
 
   function drawObstacleObj(o) {
     const t = OBSTACLE_TYPES[o.type];
-    const p = project(LANES[o.lane], t.h / 2, o.z, camera);
+    const p = project(o.x, t.h / 2, o.z);
     if (!p) return;
-    const sizeW = t.w * p.scale;
-    const sizeH = t.h * p.scale;
+    const sizeW = t.w * p.scale, sizeH = t.h * p.scale;
     ctx.save();
-    ctx.globalAlpha = clamp(1 - Math.max(0, -o.z) / 3, 0, 1);
     ctx.fillStyle = t.color;
     ctx.shadowColor = t.color;
     ctx.shadowBlur = o.type === 'fire' ? 16 : 4;
@@ -589,7 +544,7 @@
 
   function drawParticlesObj() {
     for (const pt of particles) {
-      const p = project(pt.x, pt.y, pt.z, camera);
+      const p = project(pt.x, pt.y, pt.z);
       if (!p) continue;
       ctx.save();
       ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
@@ -597,38 +552,30 @@
       ctx.shadowColor = pt.color;
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(p.sx, p.sy, pt.r * p.scale * 0.3, 0, Math.PI * 2);
+      ctx.arc(p.sx, p.sy, Math.max(1, pt.r * p.scale * 0.3), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }
 
   function drawGodzillaSprite() {
-    const gx = godzilla.side * (ROAD_HALF + 3.5);
-    const p = project(gx, 0, godzilla.z, camera);
+    const p = project(godzilla.x, 0, godzilla.z);
     if (!p) return;
-    const sx = p.sx, sy = p.sy;
+    const facingAway = Math.sin(godzilla.walkPhase * 0.3) > 0 ? 1 : -1;
     const bodyColor = godzilla.roarT > 0 ? '#5a2a3a' : '#2a3a2a';
+    const s = p.scale * 0.075;
 
     ctx.save();
-    ctx.translate(sx, sy);
-    ctx.scale(-godzilla.side, 1);
+    ctx.translate(p.sx, p.sy);
+    ctx.scale(facingAway, 1);
 
-    const s = p.scale * 0.072; // tuned so a 42-design-unit body radius reads as an imposing, not screen-filling, silhouette
     const legOffset = Math.sin(godzilla.walkPhase) * 6 * s;
-
-    // tail (swings out toward the road during tail-sweep hazard)
-    let tailSwing = 0;
-    if (godzilla.tailSwingT >= 0) {
-      const t = godzilla.tailSwingT;
-      tailSwing = Math.sin(clamp(t / 1.1, 0, 1) * Math.PI) * 90 * s;
-    }
     ctx.strokeStyle = bodyColor;
     ctx.lineWidth = 18 * s;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(-40 * s, -30 * s);
-    ctx.quadraticCurveTo(-90 * s, (-20 + legOffset) * s - tailSwing * 0.3, -130 * s - tailSwing, -40 * s + tailSwing * 0.5);
+    ctx.quadraticCurveTo(-90 * s, (-20 + legOffset) * s, -130 * s, -40 * s);
     ctx.stroke();
 
     ctx.fillStyle = bodyColor;
@@ -665,71 +612,26 @@
     ctx.arc(40 * s, -72 * s, 4 * s, 0, Math.PI * 2);
     ctx.fill();
 
-    // foot-stomp telegraph: a raised foot silhouette when about to slam
-    if (godzilla.stompT >= 0 && godzilla.stompT < 0.55) {
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#111';
-      ctx.fillRect(20 * s, -140 * s, 30 * s, 60 * s);
-      ctx.restore();
-    }
-
     ctx.restore();
   }
 
-  function drawStompShadow() {
-    if (godzilla.stompT < 0 || godzilla.stompT > 0.75) return;
-    const lane = godzilla.stompLane;
-    const p = project(LANES[lane], 0.02, 1.2, camera);
-    if (!p) return;
-    const pulse = godzilla.stompT < 0.55 ? clamp(godzilla.stompT / 0.55, 0, 1) : 1;
-    ctx.save();
-    ctx.globalAlpha = 0.55 * pulse;
-    ctx.fillStyle = godzilla.stompT >= 0.55 ? '#ff5b5b' : '#000';
-    ctx.beginPath();
-    ctx.ellipse(p.sx, p.sy, 60 * p.scale, 24 * p.scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // a huge foot descends from off-screen straight down onto the shadow
-    if (godzilla.stompT < 0.55) {
-      const t = godzilla.stompT / 0.55;
-      const legW = 90 * p.scale;
-      const legH = 260 * p.scale;
-      const landingY = p.sy;
-      const legY = lerp(-legH - 60, landingY - legH * 0.15, t * t);
+  function drawHazardMarker() {
+    if (!hazard) return;
+    const p = project(hazard.cx, 0.03, hazard.cz);
+    const progress = clamp(hazard.t / hazard.dur, 0, 1);
+    if (p) {
+      const pulse = 0.4 + Math.sin(elapsed * 14) * 0.25;
       ctx.save();
-      ctx.fillStyle = '#120a08';
-      ctx.strokeStyle = '#3a2a20';
-      ctx.lineWidth = 2;
-      ctx.fillRect(p.sx - legW / 2, legY, legW, legH);
-      ctx.strokeRect(p.sx - legW / 2, legY, legW, legH);
+      ctx.globalAlpha = 0.35 + progress * 0.5;
+      ctx.strokeStyle = progress > 0.75 ? '#ff2020' : '#ffd166';
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(p.sx, p.sy, hazard.radius * p.scale * (0.6 + pulse * 0.1), hazard.radius * p.scale * 0.35, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
-    } else if (!godzilla._dustSpawned) {
-      godzilla._dustSpawned = true;
-      spawnParticles3D(LANES[lane], 0.1, 1.2, '#c9b8a0', 20, 5, 0.5);
     }
-  }
-
-  function drawTailSweepBar() {
-    if (godzilla.tailSwingT < 0) return;
-    const t = clamp(godzilla.tailSwingT / 1.1, 0, 1);
-    // sweeps from one side of the screen to the other, crossing center during the hit window (~t=0.5)
-    const startX = godzilla.side > 0 ? W + 200 : -200;
-    const endX = godzilla.side > 0 ? -200 : W + 200;
-    const barX = lerp(startX, endX, t);
-    const barY = H * 0.72;
-    const barH = 46;
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = '#1a1210';
-    ctx.strokeStyle = '#3a2a20';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(barX, barY, 180, barH, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawVignette() {
@@ -758,35 +660,34 @@
     if (state === 'playing') {
       elapsed += dt;
       updatePlayer(dt);
-      updateWorldScroll(dt);
-      checkCollisions();
-      computeCamera();
-      updateHud();
-      if (distance >= GOAL_DISTANCE) endGame(true);
+      updateObstacleCollisions();
+      updateGodzilla(dt);
+      updateHazard(dt);
+      updateCompass();
+      document.getElementById('distance').textContent = `${Math.floor(elapsed)} s`;
+      if (player.pz >= GOAL_Z - GOAL_RADIUS && Math.abs(player.px) < GOAL_RADIUS + 2) endGame(true);
     }
 
-    updateParticles(dt, state === 'playing' ? speed : 0);
-    updateScreenFloaters(dt);
+    updateParticles(dt);
 
     ctx.save();
     ctx.translate(shakeX, shakeY);
     drawSky();
-    drawRoad();
+    drawGround();
+    drawGoalGate();
 
     const drawList = [];
-    for (const b of buildings) drawList.push({ z: b.z, fn: () => drawBuildingObj(b) });
-    for (const o of obstacles) drawList.push({ z: o.z, fn: () => drawObstacleObj(o) });
-    drawList.push({ z: godzilla.z, fn: () => drawGodzillaSprite() });
+    for (const b of buildings) drawList.push({ z: project(b.x, 0, b.z)?.z ?? -1, fn: () => drawBuildingObj(b) });
+    for (const o of obstacles) drawList.push({ z: project(o.x, 0, o.z)?.z ?? -1, fn: () => drawObstacleObj(o) });
+    const gp = project(godzilla.x, 0, godzilla.z);
+    drawList.push({ z: gp ? gp.z : -1, fn: () => drawGodzillaSprite() });
     drawList.sort((a, b) => b.z - a.z);
-    for (const item of drawList) if (item.fn) item.fn();
-    drawParticlesObj();
-    drawStompShadow();
-    drawTailSweepBar();
+    for (const item of drawList) if (item.z > 0) item.fn();
 
+    drawParticlesObj();
+    drawHazardMarker();
     drawVignette();
     ctx.restore();
-
-    if (state === 'playing') drawScreenFloaters();
 
     if (flashAlpha > 0) {
       document.getElementById('warnFlash').style.opacity = flashAlpha;
@@ -796,11 +697,7 @@
     }
 
     if (INSPECT) {
-      window.__DEBUG_STATE__ = {
-        state, distance, speed, player: { lane: player.lane, x: player.x, y: player.y, hp: player.hp, jumping: player.jumping, invuln: player.invuln },
-        obstacles, godzilla: { z: godzilla.z, tailSwingT: godzilla.tailSwingT, stompT: godzilla.stompT, stompLane: godzilla.stompLane },
-        buildingsCount: buildings.length,
-      };
+      window.__DEBUG_STATE__ = { state, elapsed, player, hazard, godzilla, obstacles };
     }
 
     requestAnimationFrame(loop);
@@ -819,5 +716,6 @@
   });
 
   initBuildings();
+  initObstacles();
   requestAnimationFrame(loop);
 })();

@@ -58,31 +58,50 @@ html, body {
   letter-spacing: 1px;
 }
 
-#distTrack {
-  position: relative;
-  margin-top: 10px;
+#compassWrap {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
-  height: 8px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255, 209, 102, 0.35);
 }
 
-#distFill {
-  height: 100%;
-  width: 0%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #ffd166, #ff5b5b);
+#compassArrow {
+  font-size: 22px;
+  color: #7dffb0;
+  text-shadow: 0 0 10px #7dffb0;
+  transition: transform 0.1s linear;
+  line-height: 1;
 }
 
-#distGoalMark {
-  position: absolute;
-  right: 0;
-  top: -4px;
-  width: 3px;
-  height: 16px;
-  background: #7dffb0;
-  box-shadow: 0 0 6px #7dffb0;
+#compassLabel {
+  font-size: 11px;
+  color: #a8ffcb;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.dirWarn {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 6;
+  color: #ff5b5b;
+  font-weight: 700;
+  font-size: 20px;
+  text-shadow: 0 0 12px #ff2020;
+  transition: opacity 0.15s ease;
+}
+
+.dirWarn.show { opacity: 1; }
+
+.dirWarn.front { top: 8%; left: 50%; transform: translateX(-50%); }
+.dirWarn.back { bottom: 8%; left: 50%; transform: translateX(-50%); }
+.dirWarn.left { top: 50%; left: 2%; transform: translateY(-50%) rotate(-90deg); }
+.dirWarn.right { top: 50%; right: 2%; transform: translateY(-50%) rotate(90deg); }
+.dirWarn.aoe {
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 26px;
 }
 
 #warnFlash {
