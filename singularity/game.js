@@ -280,8 +280,8 @@
   let bombs = [];
   let bombId = 0;
 
-  function dropBomb(x, y) {
-    bombs.push({ id: bombId++, x, y, age: 0, r: 7 });
+  function dropBomb(x, y, sourceEnemyId) {
+    bombs.push({ id: bombId++, x, y, age: 0, r: 7, sourceEnemyId });
     SFX.bombDrop();
     spawnParticles(x, y, '#ffd166', 6, 60, 0.3);
   }
@@ -450,7 +450,7 @@
 
       e.dropTimer -= dt;
       if (e.dropTimer <= 0 && d > hole.radius * 2.6) {
-        dropBomb(e.x, e.y);
+        dropBomb(e.x, e.y, e.id);
         e.dropTimer = rand(t.dropMin, t.dropMax);
       }
     }
@@ -471,13 +471,36 @@
           SFX.boom();
           loseHp(1);
         } else {
-          // repulsion: the bomb is shoved off harmlessly before it can go off
-          spawnParticles(b.x, b.y, '#ffd166', 12, 180, 0.4);
-          addScore(20, b.x, b.y, '#ffd166');
-          SFX.defuse();
+          // repulsion: it's still touching the core right as polarity flips — fizzles harmlessly
+          spawnParticles(b.x, b.y, '#ffd166', 10, 140, 0.35);
         }
         bombs.splice(i, 1);
         continue;
+      }
+
+      // repulsion turns a live bomb into a weapon: it explodes on the first enemy it hits
+      // (armed after a brief fuse so it doesn't instantly detonate on the enemy that just dropped it)
+      if (polarity < 0 && b.age > 0.35) {
+        let exploded = false;
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (e.id === b.sourceEnemyId) continue;
+          if (dist(b.x, b.y, e.x, e.y) < b.r + e.r) {
+            const t = ENEMY_TYPES[e.type];
+            spawnParticles(e.x, e.y, '#ff9d6b', 22, 260, 0.5);
+            triggerShake(6, 0.15);
+            SFX.boom();
+            addScore(t.scoreKill, e.x, e.y, '#ff9d6b');
+            killed += 1;
+            enemies.splice(j, 1);
+            exploded = true;
+            break;
+          }
+        }
+        if (exploded) {
+          bombs.splice(i, 1);
+          continue;
+        }
       }
 
       const speed = clamp(b.age * 16, 0, 230) * polarity;
