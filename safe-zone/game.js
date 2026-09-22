@@ -137,7 +137,7 @@
   function maxSpeed(b) { return b.kind === 'line' ? Math.max(b.v, b.acc ? b.vcap : b.v) : b.v; }
 
   const _p = { x: 0, y: 0 };
-  const stats = { fired: 0, rejected: 0 };
+  const stats = { fired: 0, rejected: 0, dissolved: 0 };
 
   // Reject any bullet whose path would ever come within (zone radius + bullet radius + player hitbox)
   // of the safe zone centre. Sampling step is ≤ 3px of travel and a 3px margin covers the chord error.
@@ -189,17 +189,64 @@
     return 0;
   }
 
+  // Bullets left over from the last barrage keep flying, so the next zone must be placed where none of
+  // their remaining trajectories will ever pass — the same test pathClear applies to newly fired bullets.
+  function leftoverPaths() {
+    const paths = [];
+    for (const b of bullets) {
+      const pts = [];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      const dtS = 3 / Math.max(20, maxSpeed(b));
+      for (let t = b.t; t <= MAX_LIFE; t += dtS) {
+        bulletPos(b, t, _p);
+        if (_p.x < -OFF || _p.x > W + OFF || _p.y < -OFF || _p.y > H + OFF) break;
+        pts.push(_p.x, _p.y);
+        if (_p.x < minX) minX = _p.x;
+        if (_p.x > maxX) maxX = _p.x;
+        if (_p.y < minY) minY = _p.y;
+        if (_p.y > maxY) maxY = _p.y;
+      }
+      if (pts.length) paths.push({ b, pts, minX, maxX, minY, maxY });
+    }
+    return paths;
+  }
+
+  function pathConflicts(paths, x, y, r) {
+    const hit = [];
+    for (const p of paths) {
+      const need = r + p.b.r + PLAYER_HIT + 3;
+      if (x < p.minX - need || x > p.maxX + need || y < p.minY - need || y > p.maxY + need) continue;
+      const need2 = need * need;
+      for (let i = 0; i < p.pts.length; i += 2) {
+        const dx = p.pts[i] - x, dy = p.pts[i + 1] - y;
+        if (dx * dx + dy * dy < need2) { hit.push(p.b); break; }
+      }
+    }
+    return hit;
+  }
+
   function pickSafeSpot() {
     const r = zoneRadius();
     const top = Math.max(r + 60, bossBottom() + r + 24);
     const bottom = Math.max(top + 1, H - r - 50);
-    for (let i = 0; i < 60; i++) {
+    const paths = leftoverPaths();
+    let best = null;
+    for (let i = 0; i < 150; i++) {
       const x = rand(r + 50, W - r - 50);
       const y = rand(top, bottom);
       const d = Math.hypot(x - safe.x, y - safe.y);
-      if (d > 200 && d < SPEED * 2.6) return { x, y };
+      const reachable = d > 200 && d < SPEED * 2.6;
+      if (!reachable && i < 100) continue;
+      const hit = pathConflicts(paths, x, y, r);
+      if (!hit.length && reachable) return { x, y };
+      if (!best || hit.length < best.hit.length) best = { x, y, hit };
     }
-    return { x: rand(r + 50, W - r - 50), y: rand(top, bottom) };
+    // no fully clear spot: dissolve the few leftovers that would cross it so the guarantee still holds
+    const doomed = new Set(best.hit);
+    for (const b of doomed) sparkles.push({ x: b.x, y: b.y, vx: rand(-30, 30), vy: rand(-60, -10), life: 0.8, color: '#ffffff' });
+    bullets = bullets.filter(b => !doomed.has(b));
+    stats.dissolved += doomed.size;
+    return { x: best.x, y: best.y };
   }
 
   // ---------- Boss: 終焉機神 OMEGA ----------
@@ -504,10 +551,7 @@
   function enterClear() {
     phase = 'clear';
     phaseT = 0;
-    // leftover bullets dissolve into score sparkles
-    for (const b of bullets) sparkles.push({ x: b.x, y: b.y, vx: rand(-30, 30), vy: rand(-60, -10), life: 0.8, color: '#ffffff' });
-    score += bullets.length * 2;
-    bullets = [];
+    // leftover bullets are NOT cleared: they keep flying, and the next zone is placed clear of them
     const bonus = 1000 * round + (hitThisRound ? 0 : 500 * round);
     score += bonus;
     spawnFloater(`ROUND ${round} CLEAR  +${bonus}${hitThisRound ? '' : '  NO MISS!'}`, '#7dffb0');
