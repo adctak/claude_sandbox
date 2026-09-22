@@ -86,20 +86,17 @@
   // ---------- Input ----------
   const mouse = { x: 0, y: 0 };
   let firing = false;
-  let pullingIn = false;   // ArrowDown: strengthen attraction (引力)
-  let pushingOut = false;  // ArrowUp: strengthen repulsion (斥力)
+  let polarityTarget = 1; // ArrowDown -> +1 (引力/attract), ArrowUp -> -1 (斥力/repel); persists until changed
   window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
   window.addEventListener('mousedown', () => { firing = true; });
   window.addEventListener('mouseup', () => { firing = false; });
   window.addEventListener('keydown', e => {
     if (e.key === ' ') { e.preventDefault(); firing = true; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); pullingIn = true; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); pushingOut = true; }
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.preventDefault(); polarityTarget = 1; }
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); polarityTarget = -1; }
   });
   window.addEventListener('keyup', e => {
     if (e.key === ' ') firing = false;
-    if (e.key === 'ArrowDown') pullingIn = false;
-    if (e.key === 'ArrowUp') pushingOut = false;
   });
   window.addEventListener('touchmove', e => {
     const t = e.touches[0];
@@ -321,7 +318,7 @@
   let flashAlpha = 0;
   let lastTime = performance.now();
   let polarity = 1; // +1 = full attraction (引力), -1 = full repulsion (斥力)
-  const POLARITY_RATE = 1.4;
+  const POLARITY_RATE = 3.5;
 
   function triggerShake(mag, time) {
     shakeMag = Math.max(shakeMag, mag);
@@ -346,6 +343,7 @@
     spawnAccum = 0;
     flashAlpha = 0;
     polarity = 1;
+    polarityTarget = 1;
     for (let i = 0; i < 2; i++) spawnEnemy();
     state = 'playing';
     document.getElementById('startScreen').classList.add('hidden');
@@ -384,8 +382,11 @@
     hole.fireCooldown = Math.max(0, hole.fireCooldown - dt);
     if (firing) fireOrb();
 
-    if (pullingIn && !pushingOut) polarity = clamp(polarity + POLARITY_RATE * dt, -1, 1);
-    if (pushingOut && !pullingIn) polarity = clamp(polarity - POLARITY_RATE * dt, -1, 1);
+    const dir = Math.sign(polarityTarget - polarity);
+    if (dir !== 0) {
+      polarity = clamp(polarity + dir * POLARITY_RATE * dt, -1, 1);
+      if (Math.abs(polarity - polarityTarget) < 0.02) polarity = polarityTarget;
+    }
     if (INSPECT && typeof window.__FORCE_POLARITY__ === 'number') polarity = window.__FORCE_POLARITY__;
   }
 
@@ -756,18 +757,20 @@
     }
 
     if (INSPECT) {
-      window.__DEBUG_STATE__ = { hole, enemies, bombs, orbs, score, killed, defused, hp, state, elapsed, polarity };
+      window.__DEBUG_STATE__ = { hole, enemies, bombs, orbs, score, killed, defused, hp, state, elapsed, polarity, polarityTarget };
     }
 
     requestAnimationFrame(loop);
   }
 
   // ---------- Boot ----------
-  document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('startBtn').addEventListener('click', (e) => {
+    e.currentTarget.blur();
     resumeAudio();
     startGame();
   });
-  document.getElementById('restartBtn').addEventListener('click', () => {
+  document.getElementById('restartBtn').addEventListener('click', (e) => {
+    e.currentTarget.blur();
     resumeAudio();
     startGame();
   });
