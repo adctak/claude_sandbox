@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>セプタプル — 7の倍数で返す数字リバーシ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#d9e2dc; --ink:#16201c; --muted:#56665f; --panel:#eef3ef; --line:#b9c7bf;
+  --felt:#2b6b55; --felt-line:#1d4d3d; --frame:#173a2f;
+  --black:#1a1c1e; --black-num:#c9ccc9; --white:#f4f1ea; --white-num:#3b4541;
+  --gold:#e0b13c; --gold-soft:rgba(224,177,60,.35); --warn:#b8412f;
+  --board:min(92vw, 460px);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#101a16; --ink:#e3eae6; --muted:#9aaba3; --panel:#17241f; --line:#2c3d36;
+    --felt:#245a48; --felt-line:#153a2e; --frame:#0b1f18;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#101a16; --ink:#e3eae6; --muted:#9aaba3; --panel:#17241f; --line:#2c3d36;
+  --felt:#245a48; --felt-line:#153a2e; --frame:#0b1f18;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--page); color:var(--ink);
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  font-weight:500; line-height:1.6;
+}
+.wrap{max-width:980px; margin:0 auto; padding:20px 16px 40px; display:grid; gap:24px; justify-items:center}
+@media (min-width:880px){
+  .wrap{grid-template-columns:auto 1fr; align-items:start; justify-items:stretch; padding-top:36px}
+  .side{max-width:420px}
+}
+.game{display:grid; gap:12px; width:var(--board)}
+
+header h1{margin:0; font-weight:900; font-size:2rem; line-height:1.1; letter-spacing:.02em; display:flex; align-items:baseline; gap:.4em}
+header h1 .seven{
+  display:inline-grid; place-items:center; width:1.4em; height:1.4em; border-radius:50%;
+  background:var(--black); color:var(--gold); font-size:.9em;
+}
+header p{margin:4px 0 0; color:var(--muted); font-size:.92rem}
+
+/* racks */
+.rack{
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;
+  padding:10px 12px; border-radius:14px; background:var(--panel);
+  border:2px solid transparent; transition:border-color .2s;
+}
+.rack.active{border-color:var(--gold)}
+.who{display:grid; justify-items:center; gap:2px; min-width:52px}
+.who .dot{width:26px; height:26px; border-radius:50%; box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.who .dot.b{background:var(--black)} .who .dot.w{background:var(--white); border:1px solid var(--line)}
+.who .score{font-weight:900; font-size:1.25rem; line-height:1}
+.who .name{font-size:.72rem; color:var(--muted)}
+.tiles{display:grid; grid-template-columns:repeat(6,1fr); gap:6px}
+.tile{
+  position:relative; appearance:none; border:1px solid var(--line); background:var(--page); color:var(--ink);
+  border-radius:10px; aspect-ratio:1/1.15; font:inherit; font-weight:900; font-size:1.3rem;
+  display:grid; place-items:center; cursor:pointer; padding:0;
+}
+.tile small{position:absolute; bottom:2px; right:5px; font-size:.62rem; font-weight:700; color:var(--muted)}
+.tile:disabled{cursor:default; opacity:.38}
+.rack:not(.active) .tile:disabled{opacity:.7}
+.tile.sel{background:var(--gold); border-color:var(--gold); color:#1a1c1e}
+.tile.sel small{color:#1a1c1e}
+.tile:focus-visible,.cell:focus-visible,.btn:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+
+/* board */
+.board-wrap{position:relative}
+.board{
+  width:var(--board); aspect-ratio:1; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-template-rows:repeat(7,minmax(0,1fr));
+  background:var(--felt); border:8px solid var(--frame); border-radius:12px; gap:1px;
+  background-image:none; padding:0; box-shadow:0 10px 30px -18px rgba(0,0,0,.6);
+}
+.cell{
+  appearance:none; border:0; padding:0; margin:0; background:var(--felt);
+  outline:1px solid var(--felt-line); position:relative; display:grid; place-items:center;
+  cursor:pointer; font:inherit; min-width:0; min-height:0; overflow:hidden; line-height:1;
+}
+.cell:hover:not(.filled){background:color-mix(in srgb, var(--felt) 85%, white)}
+.cell.filled{cursor:default}
+.stone{
+  width:86%; height:86%; border-radius:50%; display:grid; place-items:center;
+  font-weight:900; font-size:calc(var(--board) / 7 * .42); line-height:1;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.35);
+  transition:box-shadow .15s;
+}
+.stone.b{background:var(--black); color:var(--black-num)}
+.stone.w{background:var(--white); color:var(--white-num)}
+.stone.last::after{
+  content:""; position:absolute; width:8px; height:8px; border-radius:50%; background:var(--gold);
+  top:10%; right:10%;
+}
+.stone.will{box-shadow:0 0 0 3px var(--gold), 0 0 14px 2px var(--gold-soft)}
+.stone.ghost{pointer-events:none; opacity:.55; box-shadow:0 0 0 2px dashed var(--gold); outline:2px dashed var(--gold); outline-offset:-2px}
+.stone.drop{animation:drop .22s ease-out}
+.stone.flip{animation:flip .46s ease-in-out}
+@keyframes drop{from{transform:scale(1.35); opacity:0} to{transform:scale(1); opacity:1}}
+@keyframes flip{
+  0%{transform:scaleX(1); background:var(--from-bg); color:var(--from-fg)}
+  49%{transform:scaleX(.04); background:var(--from-bg); color:var(--from-fg)}
+  50%{transform:scaleX(.04)}
+  100%{transform:scaleX(1)}
+}
+.hint{
+  font-size:calc(var(--board) / 7 * .26); font-weight:900; color:var(--gold);
+  pointer-events:none;
+}
+.coord{position:absolute; font-size:.55rem; color:rgba(255,255,255,.35); left:3px; top:1px; pointer-events:none}
+
+.status{min-height:3.2em; font-size:.95rem}
+.status b{font-weight:900}
+
+.controls{display:flex; flex-wrap:wrap; gap:8px}
+.btn{
+  appearance:none; font:inherit; font-weight:700; font-size:.88rem; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 14px; cursor:pointer;
+}
+.btn[aria-pressed="true"]{background:var(--ink); color:var(--page); border-color:var(--ink)}
+.btn:disabled{opacity:.45; cursor:default}
+
+.toast{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  background:rgba(20,28,25,.92); color:#fff; padding:10px 16px; border-radius:10px;
+  font-size:.9rem; text-align:center; pointer-events:none; opacity:0; transition:opacity .2s; max-width:85%;
+}
+.toast.show{opacity:1}
+
+.result{
+  position:absolute; inset:0; display:none; place-items:center; background:rgba(10,20,16,.62);
+  border-radius:12px; text-align:center; color:#fff;
+}
+.result.show{display:grid}
+.result h2{margin:0; font-size:2.2rem; font-weight:900}
+.result p{margin:4px 0 14px}
+.result .btn{background:var(--gold); color:#1a1c1e; border-color:var(--gold)}
+
+/* side panel */
+.side{display:grid; gap:18px; width:var(--board)}
+@media (min-width:880px){.side{width:auto}}
+.side h2{font-size:1.05rem; font-weight:900; margin:0 0 6px}
+.rules p,.rules li{font-size:.9rem; max-width:62ch}
+.rules ol{padding-left:1.3em; margin:0}
+.rules li{margin-bottom:6px}
+.example{
+  display:flex; align-items:center; gap:6px; margin:10px 0 4px; flex-wrap:wrap; font-size:.85rem; color:var(--muted);
+}
+.mini{width:28px; height:28px; border-radius:50%; display:inline-grid; place-items:center; font-weight:900; font-size:.9rem}
+.mini.b{background:var(--black); color:var(--black-num)} .mini.w{background:var(--white); color:var(--white-num); border:1px solid var(--line)}
+.mini.new{outline:2px solid var(--gold); outline-offset:1px}
+.log{max-height:260px; overflow:auto; margin:0; padding:0 0 0 2.2em; font-size:.85rem; color:var(--muted)}
+.log li{padding:1px 0}
+.log li b{color:var(--ink)}
+.empty-log{font-size:.85rem; color:var(--muted); margin:0}
+kbd{font-family:inherit; font-size:.8em; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:var(--panel)}
+
+.modes{display:flex; gap:0; border:1px solid var(--line); border-radius:999px; overflow:hidden; width:max-content; max-width:100%}
+.modes button{appearance:none; border:0; background:var(--panel); color:var(--ink); font:inherit; font-weight:700; font-size:.85rem; padding:6px 14px; cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--ink); color:var(--page)}
+.modes button:focus-visible{outline:3px solid var(--gold); outline-offset:-3px}
+.cell.ok::before{content:""; position:absolute; width:18%; height:18%; border-radius:50%; background:var(--gold-soft); border:2px solid var(--gold); pointer-events:none}
+.cell.ok:has(.hint)::before,.cell.ok:has(.ghost)::before{display:none}
+.cell.blocked{cursor:not-allowed}
+.cell.blocked:hover{background:var(--felt)}
+.draw{display:flex; align-items:center; gap:12px; min-height:56px}
+.draw .tile{width:52px; font-size:1.6rem; cursor:default}
+.draw .tile.sel{animation:drop .22s ease-out}
+.draw p{margin:0; font-size:.85rem; color:var(--muted)}
+.rules h3{font-size:.92rem; font-weight:900; margin:14px 0 4px}
+.ex{display:grid; grid-template-columns:auto auto auto; align-items:center; gap:4px 8px; justify-content:start; margin:4px 0 2px}
+.ex .row{display:flex; gap:3px}
+.ex .arrow{color:var(--muted)}
+.ex-note{font-size:.82rem; color:var(--muted); margin:0 0 8px}
+.mini.no{opacity:.45}
+@media (prefers-reduced-motion: reduce){
+  .stone.drop,.stone.flip{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main class="game">
+    <header>
+      <h1><span class="seven">7</span>セプタプル</h1>
+      <p>並んだコマの合計が7の倍数になったら、そこまで自分の色に返す数字リバーシ。</p>
+    </header>
+
+    <div class="modes" role="group" aria-label="ルール">
+      <button id="mode-classic" aria-pressed="true">クラシック</button>
+      <button id="mode-draw" aria-pressed="false">山コマ（ver2）</button>
+    </div>
+
+    <section class="rack" id="rack-w" aria-label="白の手駒">
+      <div class="who"><span class="dot w"></span><span class="score" id="score-w">0</span><span class="name" id="name-w">白</span></div>
+      <div id="tiles-w"></div>
+    </section>
+
+    <div class="board-wrap">
+      <div class="board" id="board" role="grid" aria-label="7×7の盤"></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="result" id="result">
+        <div>
+          <h2 id="result-title"></h2>
+          <p id="result-score"></p>
+          <button class="btn" id="again">もう一度遊ぶ</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="rack" id="rack-b" aria-label="黒の手駒">
+      <div class="who"><span class="dot b"></span><span class="score" id="score-b">0</span><span class="name">黒</span></div>
+      <div id="tiles-b"></div>
+    </section>
+
+    <div class="status" id="status" aria-live="polite"></div>
+
+    <div class="controls">
+      <button class="btn" id="hint-btn" aria-pressed="false">返せる枚数を表示</button>
+      <button class="btn" id="cpu-btn" aria-pressed="false">白をコンピュータにする</button>
+      <button class="btn" id="undo-btn">1手戻す</button>
+      <button class="btn" id="new-btn">最初から</button>
+    </div>
+  </main>
+
+  <aside class="side">
+    <section class="rules">
+      <h2>ルール</h2>
+      <div id="rules-classic">
+        <ol>
+          <li>コマは1〜6が8枚ずつと7が1枚、計49枚。1〜6を4枚ずつ、お互いに配ります。</li>
+          <li>先攻（黒）が7のコマを黒で盤の中央に置いて始めます。</li>
+          <li>手番ではコマを1枚選んで空きマスに置き、8方向それぞれで合計が7の倍数になるところまで自分の色に返します。</li>
+          <li>パスはありません。すべてのコマを置いたら終了で、自分の色が多いほうの勝ちです。</li>
+        </ol>
+      </div>
+      <div id="rules-draw" hidden>
+        <ol>
+          <li>49枚のコマをよくシャッフルして山コマにします。</li>
+          <li>先攻（黒）が山コマの最初の1枚を<b>白で</b>中央に置いて始めます。</li>
+          <li>手番では山コマから1枚引き、空きマスに置いて返します。どの数字が来るかは運次第です。</li>
+          <li>パスはありません。山コマがなくなったら終了で、自分の色が多いほうの勝ちです。</li>
+        </ol>
+        <p class="ex-note">ルールブックのトラップ（☣）ルールは、トラップ発動カードの内容が未定義のため、この版には入っていません。</p>
+      </div>
+
+      <h3>配置順位</h3>
+      <p>置くコマで返せるマスが1つでもあるなら、そのどれかに置かなければいけません。返せるマスがないときだけ、好きな空きマスに置けます。置けるマスには金色の印が付きます。</p>
+
+      <h3>返し方の例（左端に置いた場合）</h3>
+      <div class="ex"><span class="row"><span class="mini w new">2</span><span class="mini b">3</span><span class="mini b">4</span><span class="mini b">5</span></span><span class="arrow">→</span><span class="row"><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span></div>
+      <p class="ex-note">2+3+4+5 = 14。7の倍数なのですべて白になります。</p>
+      <div class="ex"><span class="row"><span class="mini b new">5</span><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span><span class="arrow">→</span><span class="row"><span class="mini b">5</span><span class="mini b">2</span><span class="mini b">3</span><span class="mini b">4</span><span class="mini w">5</span></span></div>
+      <p class="ex-note">4までで14。最後の5は足すと19なのでそのままです。</p>
+      <div class="ex"><span class="row"><span class="mini w new">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini b">5</span></span><span class="arrow">→</span><span class="row"><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span></div>
+      <p class="ex-note">自分のコマも合計に含めます。</p>
+      <p class="ex-note">置いたコマをまたいで足すことや、間が空いたコマを足すことはできません。7の倍数になる地点が複数ある場合は、いちばん遠い地点まで返します。</p>
+
+      <p style="color:var(--muted); font-size:.85rem">キーボード: <kbd>1</kbd>〜<kbd>6</kbd> で数字を選択、矢印キーでマス移動、<kbd>Enter</kbd> で置く、<kbd>U</kbd> で1手戻す、<kbd>H</kbd> でヒント。</p>
+    </section>
+    <section>
+      <h2>棋譜</h2>
+      <p class="empty-log" id="empty-log">まだコマは置かれていません。</p>
+      <ol class="log" id="log"></ol>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const N = 7, COLS = "abcdefg";
+  const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  const $ = id => document.getElementById(id);
+
+  let mode = "classic";
+  let state, history = [], selected = null, hover = null, hint = false, cpu = false, cpuTimer = null, toastTimer = null;
+
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+  function fresh() {
+    const board = Array.from({length:N}, () => Array(N).fill(0));
+    const nums  = Array.from({length:N}, () => Array(N).fill(0));
+    const s = { mode, board, nums, turn: 1, stocks: { "1":[4,4,4,4,4,4], "-1":[4,4,4,4,4,4] }, pile: [], drawn: null, last: null, log: [] };
+    if (mode === "classic") {
+      board[3][3] = 1; nums[3][3] = 7;
+    } else {
+      const pile = [7];
+      for (let v=1; v<=6; v++) for (let k=0;k<8;k++) pile.push(v);
+      shuffle(pile);
+      board[3][3] = -1; nums[3][3] = pile.pop();   // 先攻が最初の1枚を白で中央に置く
+      s.pile = pile;
+      s.drawn = pile.pop();
+    }
+    return s;
+  }
+  const clone = s => JSON.parse(JSON.stringify(s));
+  const name = t => t === 1 ? "黒" : "白";
+  const cellName = (r,c) => COLS[c] + (r+1);
+
+  // 8方向それぞれ、連続して並ぶコマ（色は問わない）を近い順に合計し、
+  // 7の倍数になるいちばん遠い地点までを自分の色にする
+  function computeFlips(s, r, c, color, val) {
+    const flips = [], reach = [];
+    for (const [dr,dc] of DIRS) {
+      const chain = [];
+      let rr = r+dr, cc = c+dc;
+      while (rr>=0 && rr<N && cc>=0 && cc<N && s.board[rr][cc] !== 0) { chain.push([rr,cc]); rr+=dr; cc+=dc; }
+      let sum = val, lastIdx = -1;
+      chain.forEach(([a,b], k) => { sum += s.nums[a][b]; if (sum % 7 === 0) lastIdx = k; });
+      for (let k = 0; k <= lastIdx; k++) {
+        const [a,b] = chain[k];
+        reach.push([a,b]);
+        if (s.board[a][b] !== color) flips.push([a,b]);
+      }
+    }
+    return { flips, reach };
+  }
+
+  // 配置順位：「返せるコマがあるマス」＞「返せるコマがないマス」
+  function legalMap(s, color, val) {
+    const map = Array.from({length:N}, () => Array(N).fill(-1));
+    let any = false;
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+      if (s.board[r][c] !== 0) continue;
+      const n = computeFlips(s,r,c,color,val).flips.length;
+      map[r][c] = n; if (n>0) any = true;
+    }
+    return { map, restricted: any, ok: (r,c) => map[r][c] >= 0 && (!any || map[r][c] > 0) };
+  }
+
+  const counts = s => { let b=0,w=0; s.board.forEach(row=>row.forEach(v=>{ if(v===1)b++; else if(v===-1)w++; })); return {b,w}; };
+  const isOver = s => s.board.every(row => row.every(v => v !== 0));
+  const humanTurn = () => !(cpu && state.turn === -1) && !isOver(state);
+  const currentVal = () => state.mode === "draw" ? state.drawn : selected;
+
+  // ---------- rendering ----------
+  const boardEl = $("board");
+  const cells = [];
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    const b = document.createElement("button");
+    b.className = "cell";
+    b.setAttribute("role","gridcell");
+    b.addEventListener("click", () => onCell(r,c));
+    b.addEventListener("mouseenter", () => { hover=[r,c]; preview(); });
+    b.addEventListener("focus", () => { hover=[r,c]; preview(); });
+    b.addEventListener("mouseleave", () => { hover=null; preview(); });
+    b.addEventListener("keydown", e => arrowNav(e,r,c));
+    boardEl.appendChild(b); cells.push(b);
+  }
+  const cellAt = (r,c) => cells[r*N+c];
+
+  function buildRacks() {
+    for (const color of [1,-1]) {
+      const box = $(color===1 ? "tiles-b" : "tiles-w");
+      box.innerHTML = "";
+      if (mode === "classic") {
+        box.className = "tiles";
+        for (let v=1; v<=6; v++) {
+          const t = document.createElement("button");
+          t.className = "tile";
+          t.addEventListener("click", () => selectNum(v, color));
+          box.appendChild(t);
+        }
+      } else {
+        box.className = "draw";
+        box.innerHTML = `<button class="tile" tabindex="-1" aria-hidden="true"></button><p></p>`;
+      }
+    }
+  }
+
+  function render(anim = {}) {
+    const s = state;
+    const flipSet = new Set((anim.flips||[]).map(([a,b])=>a+","+b));
+    const val = currentVal();
+    const legal = (val != null && humanTurn()) ? legalMap(s, s.turn, val) : null;
+
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+      const el = cellAt(r,c), v = s.board[r][c];
+      el.classList.toggle("filled", v!==0);
+      el.classList.remove("ok","blocked");
+      if (v !== 0) {
+        const cls = ["stone", v===1?"b":"w"];
+        if (s.last && s.last[0]===r && s.last[1]===c) cls.push("last");
+        let style = "";
+        if (anim.placed && anim.placed[0]===r && anim.placed[1]===c) cls.push("drop");
+        if (flipSet.has(r+","+c)) {
+          cls.push("flip");
+          style = v===1 ? "--from-bg:var(--white);--from-fg:var(--white-num)" : "--from-bg:var(--black);--from-fg:var(--black-num)";
+        }
+        el.innerHTML = `<span class="${cls.join(" ")}" style="${style}">${s.nums[r][c]}</span>`;
+        el.setAttribute("aria-label", `${cellName(r,c)} ${name(v)}の${s.nums[r][c]}`);
+      } else {
+        let h = "", label = `${cellName(r,c)} 空き`;
+        if (legal) {
+          if (legal.ok(r,c)) { el.classList.add("ok"); label += "、置ける"; }
+          else { el.classList.add("blocked"); label += "、配置順位により置けない"; }
+          if (hint && legal.map[r][c] > 0) h = `<span class="hint">+${legal.map[r][c]}</span>`;
+        } else if (hint && humanTurn() && s.mode === "classic") {
+          const n = Math.max(0, ...[1,2,3,4,5,6].filter(x => s.stocks[s.turn][x-1] > 0).map(x => computeFlips(s,r,c,s.turn,x).flips.length));
+          if (n > 0) h = `<span class="hint">+${n}</span>`;
+        }
+        el.innerHTML = `<span class="coord">${cellName(r,c)}</span>${h}`;
+        el.setAttribute("aria-label", label);
+      }
+    }
+
+    // racks
+    for (const color of [1,-1]) {
+      const active = s.turn === color && !isOver(s);
+      $(color===1?"rack-b":"rack-w").classList.toggle("active", active);
+      const box = $(color===1?"tiles-b":"tiles-w");
+      if (s.mode === "classic") {
+        [...box.children].forEach((t,i) => {
+          const left = s.stocks[color][i];
+          t.innerHTML = `${i+1}<small>×${left}</small>`;
+          t.disabled = !active || left===0 || (cpu && color===-1);
+          t.classList.toggle("sel", active && selected===i+1);
+          t.setAttribute("aria-label", `${name(color)}の${i+1}、残り${left}枚`);
+          t.setAttribute("aria-pressed", active && selected===i+1 ? "true" : "false");
+        });
+      } else {
+        const t = box.querySelector(".tile"), p = box.querySelector("p");
+        if (active) {
+          t.textContent = s.drawn; t.disabled = false; t.classList.add("sel");
+          p.textContent = `引いたコマ。山コマ残り ${s.pile.length} 枚`;
+        } else {
+          t.textContent = "?"; t.disabled = true; t.classList.remove("sel");
+          p.textContent = isOver(s) ? "山コマはなくなりました" : "相手の番です";
+        }
+      }
+    }
+
+    const {b,w} = counts(s);
+    $("score-b").textContent = b; $("score-w").textContent = w;
+    $("name-w").textContent = cpu ? "白 (CPU)" : "白";
+
+    // status
+    const st = $("status");
+    const restrictNote = legal && legal.restricted ? "返せるマスがあるので、印の付いたマスのどれかに置きます。" : legal ? "返せるマスがないので、好きな空きマスに置けます。" : "";
+    if (isOver(s)) st.innerHTML = `終局です。`;
+    else if (cpu && s.turn===-1) st.innerHTML = `<b>白 (CPU)</b> が考えています…`;
+    else if (s.mode === "draw") st.innerHTML = `<b>${name(s.turn)}</b>の番、「${s.drawn}」を引きました。${restrictNote}`;
+    else if (selected == null) st.innerHTML = `<b>${name(s.turn)}</b>の番です。まず数字を選んでください。`;
+    else st.innerHTML = `<b>${name(s.turn)}</b>の番、「${selected}」を選択中。${restrictNote}`;
+
+    // log
+    const log = $("log");
+    log.innerHTML = s.log.map(e => `<li><b>${e.who}</b> ${e.v} を ${e.at}　${e.n ? e.n+"枚返し" : "返しなし"}</li>`).join("");
+    $("empty-log").style.display = s.log.length ? "none" : "";
+    log.scrollTop = log.scrollHeight;
+    $("undo-btn").disabled = history.length === 0;
+
+    // result
+    const res = $("result");
+    if (isOver(s)) {
+      $("result-title").textContent = b>w ? "黒の勝ち" : w>b ? (cpu ? "CPUの勝ち" : "白の勝ち") : "引き分け";
+      $("result-score").textContent = `黒 ${b} − ${w} 白`;
+      res.classList.add("show");
+    } else res.classList.remove("show");
+    preview();
+  }
+
+  function preview() {
+    document.querySelectorAll(".stone.will").forEach(e=>e.classList.remove("will"));
+    document.querySelectorAll(".stone.ghost").forEach(e=>e.remove());
+    const val = currentVal();
+    if (!hover || val==null || !humanTurn()) return;
+    const [r,c] = hover;
+    if (state.board[r][c] !== 0 || cellAt(r,c).classList.contains("blocked")) return;
+    const { flips } = computeFlips(state, r, c, state.turn, val);
+    flips.forEach(([a,b]) => cellAt(a,b).querySelector(".stone")?.classList.add("will"));
+    const g = document.createElement("span");
+    g.className = "stone ghost " + (state.turn===1?"b":"w");
+    g.textContent = val;
+    const el = cellAt(r,c);
+    el.querySelector(".hint")?.remove();
+    el.appendChild(g);
+  }
+
+  function toast(msg, ms=1800) {
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove("show"), ms);
+  }
+
+  // ---------- actions ----------
+  function selectNum(v, color = state.turn) {
+    if (state.mode !== "classic" || !humanTurn() || color !== state.turn) return;
+    if (state.stocks[state.turn][v-1] <= 0) { toast(`「${v}」はもう残っていません。別の数字を選んでください。`); return; }
+    selected = (selected === v) ? null : v;
+    render();
+  }
+
+  function onCell(r,c) {
+    if (!humanTurn()) return;
+    if (state.board[r][c] !== 0) { toast("空いているマスを選んでください。"); return; }
+    const val = currentVal();
+    if (val == null) { toast("先に1〜6の数字を選んでください。"); return; }
+    if (!legalMap(state, state.turn, val).ok(r,c)) { toast(`「${val}」で返せるマスがあるので、印の付いたマスに置いてください。`, 2400); return; }
+    place(r,c,val);
+  }
+
+  function place(r,c,v) {
+    history.push(clone(state));
+    const s = state, color = s.turn;
+    const { flips } = computeFlips(s, r, c, color, v);
+    s.board[r][c] = color; s.nums[r][c] = v;
+    if (s.mode === "classic") s.stocks[color][v-1]--;
+    flips.forEach(([a,b]) => s.board[a][b] = color);
+    s.last = [r,c];
+    s.log.push({ who: name(color), v, at: cellName(r,c), n: flips.length });
+    s.turn = -color;
+    if (s.mode === "draw") s.drawn = s.pile.length ? s.pile.pop() : null;
+    selected = null;
+    render({ placed:[r,c], flips });
+    if (flips.length >= 3) toast(`${flips.length}枚返し！`, 1200);
+    maybeCpu();
+  }
+
+  function maybeCpu() {
+    clearTimeout(cpuTimer);
+    if (!cpu || state.turn !== -1 || isOver(state)) return;
+    cpuTimer = setTimeout(() => {
+      const s = state, color = -1;
+      const vals = s.mode === "draw" ? [s.drawn] : [1,2,3,4,5,6].filter(v => s.stocks[color][v-1] > 0);
+      let best = null;
+      for (const v of vals) {
+        const L = legalMap(s, color, v);
+        for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+          if (!L.ok(r,c)) continue;
+          const score = L.map[r][c]*10 + (s.mode==="classic" ? s.stocks[color][v-1]*0.5 : 0) + Math.random()*3;
+          if (!best || score > best.score) best = { r, c, v, score };
+        }
+      }
+      if (best) place(best.r, best.c, best.v);
+    }, 650);
+  }
+
+  function undo() {
+    if (!history.length) return;
+    clearTimeout(cpuTimer);
+    let s = history.pop();
+    while (cpu && s.turn !== 1 && history.length) s = history.pop();
+    state = s; selected = null;
+    render();
+    maybeCpu();
+  }
+
+  function newGame() {
+    clearTimeout(cpuTimer);
+    state = fresh(); history = []; selected = null;
+    render();
+    maybeCpu();
+  }
+
+  function setMode(m) {
+    if (m === mode) return;
+    mode = m;
+    $("mode-classic").setAttribute("aria-pressed", m==="classic");
+    $("mode-draw").setAttribute("aria-pressed", m==="draw");
+    $("rules-classic").hidden = m !== "classic";
+    $("rules-draw").hidden = m !== "draw";
+    buildRacks();
+    newGame();
+    toast(m === "classic" ? "クラシックで新しく始めました" : "山コマ（ver2）で新しく始めました");
+  }
+
+  function arrowNav(e, r, c) {
+    const m = { ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1] }[e.key];
+    if (!m) return;
+    e.preventDefault();
+    const nr = Math.min(N-1, Math.max(0, r+m[0])), nc = Math.min(N-1, Math.max(0, c+m[1]));
+    cellAt(nr,nc).focus();
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key.length===1 && "123456".includes(e.key)) selectNum(Number(e.key));
+    else if (e.key==="u" || e.key==="U") undo();
+    else if (e.key==="h" || e.key==="H") $("hint-btn").click();
+    else if (e.key==="r" || e.key==="R") newGame();
+  });
+
+  $("mode-classic").addEventListener("click", () => setMode("classic"));
+  $("mode-draw").addEventListener("click", () => setMode("draw"));
+  $("hint-btn").addEventListener("click", e => { hint = !hint; e.currentTarget.setAttribute("aria-pressed", hint); render(); });
+  $("cpu-btn").addEventListener("click", e => {
+    cpu = !cpu; e.currentTarget.setAttribute("aria-pressed", cpu);
+    if (cpu && state.turn === -1) selected = null;
+    render(); maybeCpu();
+  });
+  $("undo-btn").addEventListener("click", undo);
+  $("new-btn").addEventListener("click", newGame);
+  $("again").addEventListener("click", newGame);
+
+  buildRacks();
+  newGame();
+})();
+</script>
+</body>
+</html>
