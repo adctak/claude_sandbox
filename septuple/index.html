@@ -181,6 +181,14 @@ kbd{font-family:inherit; font-size:.8em; border:1px solid var(--line); border-bo
 .ex .arrow{color:var(--muted)}
 .ex-note{font-size:.82rem; color:var(--muted); margin:0 0 8px}
 .mini.no{opacity:.45}
+header .links{display:flex; gap:14px; margin-top:6px; font-weight:700}
+header .links a{color:var(--ink); text-decoration:none; border-bottom:2px solid var(--gold)}
+.manual-link{
+  display:grid; gap:0; margin:12px 0; padding:12px 18px; border-radius:14px; text-decoration:none;
+  background:var(--gold); color:#1a1c1e; font-weight:900; font-size:1.05rem; width:max-content; max-width:100%;
+}
+.manual-link small{font-weight:700; font-size:.78rem}
+.manual-link:focus-visible,header .links a:focus-visible{outline:3px solid var(--gold); outline-offset:3px}
 @media (prefers-reduced-motion: reduce){
   .stone.drop,.stone.flip{animation:none}
 }
@@ -192,6 +200,7 @@ kbd{font-family:inherit; font-size:.8em; border:1px solid var(--line); border-bo
     <header>
       <h1><span class="seven">7</span>セプタプル</h1>
       <p>並んだコマの合計が7の倍数になったら、そこまで自分の色に返す数字リバーシ。</p>
+      <p class="links"><a href="manual.html">📖 マニュアル</a><a href="../index.html">🏠 ゲーム一覧</a></p>
     </header>
 
     <div class="modes" role="group" aria-label="ルール">
@@ -233,37 +242,9 @@ kbd{font-family:inherit; font-size:.8em; border:1px solid var(--line); border-bo
 
   <aside class="side">
     <section class="rules">
-      <h2>ルール</h2>
-      <div id="rules-classic">
-        <ol>
-          <li>コマは1〜6が8枚ずつと7が1枚、計49枚。1〜6を4枚ずつ、お互いに配ります。</li>
-          <li>先攻（黒）が7のコマを黒で盤の中央に置いて始めます。</li>
-          <li>手番ではコマを1枚選んで空きマスに置き、8方向それぞれで合計が7の倍数になるところまで自分の色に返します。</li>
-          <li>パスはありません。すべてのコマを置いたら終了で、自分の色が多いほうの勝ちです。</li>
-        </ol>
-      </div>
-      <div id="rules-draw" hidden>
-        <ol>
-          <li>49枚のコマをよくシャッフルして山コマにします。</li>
-          <li>先攻（黒）が山コマの最初の1枚を<b>白で</b>中央に置いて始めます。</li>
-          <li>手番では山コマから1枚引き、空きマスに置いて返します。どの数字が来るかは運次第です。</li>
-          <li>パスはありません。山コマがなくなったら終了で、自分の色が多いほうの勝ちです。</li>
-        </ol>
-        <p class="ex-note">ルールブックのトラップ（☣）ルールは、トラップ発動カードの内容が未定義のため、この版には入っていません。</p>
-      </div>
-
-      <h3>配置順位</h3>
-      <p>置くコマで返せるマスが1つでもあるなら、そのどれかに置かなければいけません。返せるマスがないときだけ、好きな空きマスに置けます。置けるマスには金色の印が付きます。</p>
-
-      <h3>返し方の例（左端に置いた場合）</h3>
-      <div class="ex"><span class="row"><span class="mini w new">2</span><span class="mini b">3</span><span class="mini b">4</span><span class="mini b">5</span></span><span class="arrow">→</span><span class="row"><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span></div>
-      <p class="ex-note">2+3+4+5 = 14。7の倍数なのですべて白になります。</p>
-      <div class="ex"><span class="row"><span class="mini b new">5</span><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span><span class="arrow">→</span><span class="row"><span class="mini b">5</span><span class="mini b">2</span><span class="mini b">3</span><span class="mini b">4</span><span class="mini w">5</span></span></div>
-      <p class="ex-note">4までで14。最後の5は足すと19なのでそのままです。</p>
-      <div class="ex"><span class="row"><span class="mini w new">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini b">5</span></span><span class="arrow">→</span><span class="row"><span class="mini w">2</span><span class="mini w">3</span><span class="mini w">4</span><span class="mini w">5</span></span></div>
-      <p class="ex-note">自分のコマも合計に含めます。</p>
-      <p class="ex-note">置いたコマをまたいで足すことや、間が空いたコマを足すことはできません。7の倍数になる地点が複数ある場合は、いちばん遠い地点まで返します。</p>
-
+      <h2>あそびかた</h2>
+      <p>コマを置いたら、8方向それぞれで並んだコマの数字を足します。合計が7の倍数（7・14・21…）になったら、そこまで自分の色に返ります。</p>
+      <a class="manual-link" href="manual.html">📖 マニュアルを見る<small>絵つきで やさしく せつめいしています</small></a>
       <p style="color:var(--muted); font-size:.85rem">キーボード: <kbd>1</kbd>〜<kbd>6</kbd> で数字を選択、矢印キーでマス移動、<kbd>Enter</kbd> で置く、<kbd>U</kbd> で1手戻す、<kbd>H</kbd> でヒント。</p>
     </section>
     <section>
@@ -567,8 +548,6 @@ kbd{font-family:inherit; font-size:.8em; border:1px solid var(--line); border-bo
     mode = m;
     $("mode-classic").setAttribute("aria-pressed", m==="classic");
     $("mode-draw").setAttribute("aria-pressed", m==="draw");
-    $("rules-classic").hidden = m !== "classic";
-    $("rules-draw").hidden = m !== "draw";
     buildRacks();
     newGame();
     toast(m === "classic" ? "クラシックで新しく始めました" : "山コマ（ver2）で新しく始めました");

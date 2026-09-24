@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>セプタプルのあそびかた</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#eef3ea; --ink:#1d2622; --muted:#5a6a62; --panel:#ffffff; --line:#c9d6cc;
+  --felt:#2b6b55; --felt-line:#1d4d3d; --frame:#173a2f;
+  --black:#1a1c1e; --black-num:#d6d9d6; --white:#f7f4ec; --white-num:#3b4541;
+  --gold:#e0b13c; --gold-soft:rgba(224,177,60,.3); --pink:#e8738a; --sky:#4f9fd6; --ok:#2f9a62; --no:#c2503c;
+  --tip-bg:#fff6dc; --tip-line:#ecd28a;
+  box-sizing:border-box;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#111a16; --ink:#e6ece8; --muted:#a0b0a8; --panel:#19251f; --line:#2e4038;
+    --felt:#245a48; --felt-line:#153a2e; --frame:#0b1f18;
+    --tip-bg:#2c2716; --tip-line:#5c4f24;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#111a16; --ink:#e6ece8; --muted:#a0b0a8; --panel:#19251f; --line:#2e4038;
+  --felt:#245a48; --felt-line:#153a2e; --frame:#0b1f18;
+  --tip-bg:#2c2716; --tip-line:#5c4f24;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--page); color:var(--ink);
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  font-weight:500; font-size:18px; line-height:1.9;
+}
+.wrap{max-width:760px; margin:0 auto; padding:24px 16px 64px}
+a{color:inherit}
+
+.topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px}
+.btn{
+  display:inline-flex; align-items:center; gap:6px; appearance:none; font:inherit; font-weight:700; font-size:.95rem;
+  color:var(--ink); background:var(--panel); border:2px solid var(--line); border-radius:999px; padding:6px 16px;
+  text-decoration:none; cursor:pointer;
+}
+.btn.primary{background:var(--gold); border-color:var(--gold); color:#1a1c1e}
+.btn:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+
+.hero{text-align:center; padding:12px 0 8px}
+.hero h1{margin:8px 0 0; font-size:clamp(2rem,7vw,2.8rem); font-weight:900; line-height:1.2}
+.hero p{margin:6px 0 0; color:var(--muted)}
+.hero svg{width:min(100%,360px); height:auto}
+
+nav.toc{background:var(--panel); border:2px solid var(--line); border-radius:18px; padding:14px 18px; margin:20px 0 8px}
+nav.toc b{display:block; margin-bottom:4px}
+nav.toc ol{margin:0; padding-left:1.6em; columns:2; column-gap:24px; font-size:.95rem}
+@media (max-width:520px){ nav.toc ol{columns:1} }
+nav.toc a{text-decoration:none; border-bottom:2px dotted var(--line)}
+
+section.card{background:var(--panel); border:2px solid var(--line); border-radius:22px; padding:20px 20px 22px; margin:22px 0}
+@media (max-width:520px){ section.card{padding:16px 14px 18px} section.card > h2{font-size:1.2rem} }
+section.card > h2{
+  display:flex; align-items:center; gap:10px; margin:0 0 10px; font-size:1.45rem; font-weight:900; line-height:1.3;
+}
+section.card > h2 .num{
+  flex:none; display:inline-grid; place-items:center; width:1.8em; height:1.8em; border-radius:50%;
+  background:var(--black); color:var(--gold); font-size:.85em;
+}
+h3{font-size:1.1rem; font-weight:900; margin:18px 0 4px}
+p{margin:6px 0}
+.big{font-size:1.15em; font-weight:900}
+.hl{background:linear-gradient(transparent 60%, var(--gold-soft) 60%); font-weight:700}
+
+.fig{margin:14px 0; text-align:center}
+.fig svg{max-width:100%; height:auto}
+.fig figcaption{font-size:.88rem; color:var(--muted); margin-top:4px}
+
+.tip{background:var(--tip-bg); border:2px dashed var(--tip-line); border-radius:16px; padding:10px 14px 10px 50px; position:relative; margin:14px 0; font-size:.95rem}
+.tip::before{content:"💡"; position:absolute; left:14px; top:10px; font-size:1.3rem}
+.tip.warn::before{content:"⚠️"}
+
+/* stones */
+.st{
+  width:46px; height:46px; border-radius:50%; display:inline-grid; place-items:center; flex:none;
+  font-weight:900; font-size:1.35rem; line-height:1; position:relative;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.28), 0 2px 3px rgba(0,0,0,.3);
+  transition:background .25s, color .25s, transform .25s, box-shadow .25s;
+}
+.st.b{background:var(--black); color:var(--black-num)}
+.st.w{background:var(--white); color:var(--white-num); border:1px solid #cfc9bb}
+.st.new{box-shadow:0 0 0 3px var(--gold), inset 0 -3px 0 rgba(0,0,0,.28)}
+.st.gap{background:transparent; box-shadow:none; border:2px dashed var(--line)}
+.st.sm{width:34px; height:34px; font-size:1rem}
+.st.on{transform:scale(1.12); box-shadow:0 0 0 3px var(--sky), 0 0 14px var(--sky)}
+.st.flipping{animation:flip .5s ease-in-out}
+@keyframes flip{0%{transform:scaleX(1)} 50%{transform:scaleX(.05)} 100%{transform:scaleX(1)}}
+
+.felt{display:inline-flex; gap:6px; padding:8px 10px; background:var(--felt); border:5px solid var(--frame); border-radius:12px}
+.pieces{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:12px 0}
+.pile{display:grid; justify-items:center; gap:2px; font-weight:900}
+.pile .count{font-size:.9rem; color:var(--muted)}
+
+/* flip examples */
+.ex{border:2px solid var(--line); border-radius:18px; padding:12px 12px 14px; margin:16px 0; background:var(--page)}
+.ex-title{font-weight:900; margin:0 0 8px}
+.ex-row{display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; justify-content:center}
+.ex-side{display:grid; justify-items:center; gap:4px}
+.ex-side .lbl{font-size:.8rem; color:var(--muted); font-weight:700}
+.line{display:flex; gap:6px; padding:8px 10px; background:var(--felt); border:5px solid var(--frame); border-radius:12px}
+.cellwrap{position:relative; display:grid; justify-items:center}
+.play{padding-bottom:34px}
+.sum{
+  position:absolute; top:100%; left:50%; transform:translateX(-50%); margin-top:14px; white-space:nowrap;
+  min-width:36px; height:24px; padding:0 5px; border-radius:12px; font-size:.74rem; font-weight:900; line-height:24px;
+  text-align:center; color:#fff; background:rgba(255,255,255,.12); visibility:hidden;
+}
+.sum.show{visibility:visible; background:#476e61}
+.sum.seven{background:var(--gold); color:#1a1c1e}
+.arrow{align-self:center; font-size:1.6rem; color:var(--muted)}
+.arrow span{display:inline-block}
+@media (max-width:640px){ .arrow{flex-basis:100%; text-align:center; line-height:1} .arrow span{transform:rotate(90deg)} }
+.ex-note{margin:10px 4px 0; font-size:.95rem}
+.ex-ctrl{display:flex; justify-content:center; gap:8px; margin-top:10px}
+.eq{display:inline-block; font-weight:900; padding:0 6px; border-radius:8px; background:var(--gold-soft)}
+
+/* times table */
+.dan{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0}
+.dan span{min-width:52px; padding:6px 10px; border-radius:14px; background:var(--gold); color:#1a1c1e; font-weight:900; text-align:center; font-size:1.15rem}
+
+.steps{list-style:none; margin:10px 0; padding:0; display:grid; gap:12px}
+.steps li{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start}
+.steps .n{display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:var(--gold); color:#1a1c1e; font-weight:900; font-size:1.1rem}
+
+.ui{display:grid; gap:10px; margin:10px 0}
+.ui div{display:grid; grid-template-columns:minmax(120px,auto) 1fr; gap:12px; align-items:center}
+.ui .pill{justify-self:start; font-size:.85rem; font-weight:700; border:2px solid var(--line); border-radius:999px; padding:3px 12px; background:var(--page); white-space:nowrap}
+@media (max-width:520px){ .ui div{grid-template-columns:1fr; gap:2px} }
+
+dl.qa dt{font-weight:900; margin-top:12px}
+dl.qa dt::before{content:"Q. "; color:var(--sky)}
+dl.qa dd{margin:2px 0 0 1.6em}
+dl.qa dd::before{content:"A. "; color:var(--pink); font-weight:900; margin-left:-1.6em}
+
+.end{text-align:center; margin-top:28px}
+kbd{font-family:inherit; font-size:.85em; border:1px solid var(--line); border-bottom-width:3px; border-radius:6px; padding:0 6px; background:var(--page)}
+
+@media (prefers-reduced-motion: reduce){ .st{transition:none} .st.flipping{animation:none} }
+@media print{
+  body{background:#fff; font-size:15px}
+  .topbar,.ex-ctrl,.end .btn{display:none}
+  section.card{break-inside:avoid; border-color:#ccc}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="btn" href="index.html">← ゲームにもどる</a>
+    <a class="btn" href="../index.html">🏠 ゲームいちらん</a>
+  </div>
+
+  <header class="hero">
+    <svg viewBox="0 0 360 150" role="img" aria-label="くろとしろのコマが ならんでいる え">
+      <rect x="10" y="30" width="340" height="90" rx="14" fill="#2b6b55" stroke="#173a2f" stroke-width="6"/>
+      <g font-family="Zen Maru Gothic, sans-serif" font-weight="900" font-size="26" text-anchor="middle">
+        <circle cx="60" cy="75" r="27" fill="#f7f4ec"/><text x="60" y="84" fill="#3b4541">2</text>
+        <circle cx="120" cy="75" r="27" fill="#1a1c1e"/><text x="120" y="84" fill="#d6d9d6">3</text>
+        <circle cx="180" cy="75" r="27" fill="#1a1c1e"/><text x="180" y="84" fill="#d6d9d6">4</text>
+        <circle cx="240" cy="75" r="27" fill="#1a1c1e"/><text x="240" y="84" fill="#d6d9d6">5</text>
+        <circle cx="300" cy="75" r="30" fill="#e0b13c"/><text x="300" y="85" fill="#1a1c1e" font-size="30">7</text>
+      </g>
+      <g font-family="Zen Maru Gothic, sans-serif" font-weight="900" font-size="15" fill="#e0b13c" text-anchor="middle">
+        <text x="150" y="20">2＋3＋4＋5＝14 ！</text>
+      </g>
+      <text x="300" y="142" font-family="Zen Maru Gothic, sans-serif" font-weight="700" font-size="13" fill="#7a8a82" text-anchor="middle">7のなかま</text>
+    </svg>
+    <h1>セプタプルの<br>あそびかた</h1>
+    <p>たしざんで あいての コマを ひっくりかえそう！</p>
+  </header>
+
+  <nav class="toc" aria-label="もくじ">
+    <b>📖 もくじ</b>
+    <ol>
+      <li><a href="#s1">どんな ゲーム？</a></li>
+      <li><a href="#s2">つかうもの</a></li>
+      <li><a href="#s3">はじめかた</a></li>
+      <li><a href="#s4">じぶんの ばんに すること</a></li>
+      <li><a href="#s5">ひっくりかえす きまり</a></li>
+      <li><a href="#s6">おける ばしょの きまり</a></li>
+      <li><a href="#s7">かちまけ</a></li>
+      <li><a href="#s8">山コマ（ver2）</a></li>
+      <li><a href="#s9">がめんの つかいかた</a></li>
+      <li><a href="#s10">こまったときは</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="card" id="s1">
+    <h2><span class="num">1</span>どんな ゲーム？</h2>
+    <p>セプタプルは、<b>すうじの ついた コマ</b>を つかう リバーシ（オセロ）です。ふたりで あそびます。コンピュータと たいせんすることも できます。</p>
+    <p>コマを おいたら、ならんでいる コマの すうじを <b>たしざん</b>します。こたえが <span class="hl">7・14・21 などの「7のなかま」</span>に なったら、そこまでの コマが ぜんぶ じぶんの いろに かわります。</p>
+    <p>さいごに じぶんの いろの コマが おおいほうの かちです。</p>
+    <div class="tip">「セプタプル」は えいごで「7ばい」という いみです。</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="s2">
+    <h2><span class="num">2</span>つかうもの</h2>
+    <h3>🟩 ばん</h3>
+    <p>たて 7ます、よこ 7ます の ばんを つかいます。ぜんぶで <b>49ます</b>です。</p>
+    <figure class="fig">
+      <svg viewBox="0 0 250 250" width="250" role="img" aria-label="7かける7の ばん。まんなかに くろの 7が おいてある">
+        <rect x="4" y="4" width="242" height="242" rx="12" fill="#173a2f"/>
+        <g id="grid"></g>
+      </svg>
+      <figcaption>7×7の ばん。まんなか（★）から スタートします。</figcaption>
+    </figure>
+
+    <h3>⚫ コマ</h3>
+    <p>コマは かたほうが くろ、もうかたほうが しろ です。おもてと うらで いろが ちがいます。コマには <b>1から7の すうじ</b>が かいてあります。</p>
+    <div class="pieces" id="pieces"></div>
+    <p>1〜6は 8こずつ、7は とくべつで <b>1こだけ</b>。ぜんぶで 49こ です。</p>
+    <div class="tip">ひっくりかえっても、コマの <b>すうじは かわりません</b>。かわるのは いろだけです。</div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="s3">
+    <h2><span class="num">3</span>はじめかた（クラシック）</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div>1〜6の コマを <b>4こずつ</b>、ふたりに くばります。ひとり 24こ です。<br>
+        <span class="felt" style="margin-top:6px">
+          <span class="st sm b">1</span><span class="st sm b">2</span><span class="st sm b">3</span><span class="st sm b">4</span><span class="st sm b">5</span><span class="st sm b">6</span>
+        </span> <b>× 4こずつ</b></div></li>
+      <li><span class="n">2</span><div><b>くろ</b>が さきに はじめます（せんこう）。<b>しろ</b>は あとです（こうこう）。</div></li>
+      <li><span class="n">3</span><div>さいしょに、くろが <b>7の コマ</b>を くろで ばんの まんなかに おきます。ゲームでは さいしょから おいてあります。</div></li>
+    </ol>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="s4">
+    <h2><span class="num">4</span>じぶんの ばんに すること</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><b>すうじを えらぶ</b><br>じぶんの てもとの コマから 1こ えらびます。えらんだ コマは きいろく ひかります。
+        <figure class="fig" style="margin:8px 0">
+          <svg viewBox="0 0 300 70" width="300" role="img" aria-label="1から6の ボタンが ならび、3が きいろく えらばれている">
+            <g font-family="Zen Maru Gothic, sans-serif" font-weight="900" font-size="22" text-anchor="middle" id="rack"></g>
+          </svg>
+          <figcaption>ちいさい「×4」は のこりの かずです。</figcaption>
+        </figure></div></li>
+      <li><span class="n">2</span><div><b>あいている ますに おく</b><br>きいろい まるが ついた ますの どれかに おきます（<a href="#s6">6ばん</a>で くわしく）。</div></li>
+      <li><span class="n">3</span><div><b>ひっくりかえる</b><br>たしざんで「7のなかま」に なった ところまで、じぶんの いろに かわります（<a href="#s5">5ばん</a>で くわしく）。</div></li>
+      <li><span class="n">4</span><div><b>あいての ばんに かわる</b><br>これを かわりばんこに くりかえします。<b>パスは できません</b>。</div></li>
+    </ol>
+  </section>
+
+  <!-- 5 -->
+  <section class="card" id="s5">
+    <h2><span class="num">5</span>ひっくりかえす きまり</h2>
+    <p class="big">ここが いちばん だいじ！</p>
+
+    <h3>① 「7のなかま」を おぼえよう</h3>
+    <p>7のだんの こたえが「7のなかま」です。たしざんの こたえが このどれかに なったら ひっくりかえせます。</p>
+    <div class="dan"><span>7</span><span>14</span><span>21</span><span>28</span><span>35</span><span>42</span><span>49</span></div>
+
+    <h3>② 8つの むきを しらべる</h3>
+    <p>おいた コマから、たて・よこ・ななめの <b>8つの むき</b>を 1つずつ しらべます。</p>
+    <figure class="fig">
+      <svg viewBox="0 0 220 220" width="220" role="img" aria-label="まんなかの コマから 8つの むきに やじるしが でている">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e0b13c"/></marker></defs>
+        <rect x="4" y="4" width="212" height="212" rx="14" fill="#2b6b55" stroke="#173a2f" stroke-width="6"/>
+        <g id="dirs" stroke="#e0b13c" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"></g>
+        <circle cx="110" cy="110" r="24" fill="#f7f4ec" stroke="#e0b13c" stroke-width="4"/>
+        <text x="110" y="119" font-family="Zen Maru Gothic, sans-serif" font-weight="900" font-size="24" text-anchor="middle" fill="#3b4541">3</text>
+      </svg>
+      <figcaption>むきは ぜんぶで 8つ。それぞれ べつべつに かぞえます。</figcaption>
+    </figure>
+
+    <h3>③ おいた コマから じゅんばんに たしていく</h3>
+    <p>おいた コマの すうじから はじめて、となりの コマ、その となりの コマ… と <b>じゅんばんに たして</b>いきます。<b>くろも しろも かんけいなく</b> たします。</p>
+    <p>こたえが「7のなかま」に なったら、<span class="hl">そこまでの コマが ぜんぶ じぶんの いろ</span>に なります。</p>
+    <p>「▶ うごかしてみる」を おすと、たしざんの ようすが みられます。</p>
+
+    <div id="examples"></div>
+
+    <div class="tip">「7のなかま」に なる ところが 2つ あったら、<b>とおいほう</b>まで ひっくりかえります。</div>
+    <div class="tip warn">あいだに <b>あいている ます</b>が あったら、そこで おしまい。とびこえて たすことは できません。</div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card" id="s6">
+    <h2><span class="num">6</span>おける ばしょの きまり</h2>
+    <p>えらんだ すうじで <b>ひっくりかえせる ますが 1つでも あったら</b>、かならず その どれかに おかなければ いけません。</p>
+    <p>ひっくりかえせる ますが 1つも ないときだけ、すきな あいている ますに おけます。</p>
+    <figure class="fig">
+      <svg viewBox="0 0 250 250" width="250" role="img" aria-label="おける ますに きいろい まるが ついている ばん">
+        <rect x="4" y="4" width="242" height="242" rx="12" fill="#173a2f"/>
+        <g id="okgrid"></g>
+      </svg>
+      <figcaption>しろが「3」を えらんだ とき。おける ますに <b style="color:var(--gold)">きいろい まる</b>が つきます。<br>まるが ない ますには おけません。</figcaption>
+    </figure>
+    <div class="tip">すうじを かえると、おける ばしょも かわります。まよったら ほかの すうじも ためしてみよう。</div>
+  </section>
+
+  <!-- 7 -->
+  <section class="card" id="s7">
+    <h2><span class="num">7</span>かちまけ</h2>
+    <p>ばんの ますが ぜんぶ うまったら おしまいです。<b>じぶんの いろの コマが おおいほう</b>の かち！ おなじ かずなら ひきわけです。</p>
+    <figure class="fig">
+      <svg viewBox="0 0 300 110" width="300" role="img" aria-label="くろ 27、しろ 22 で くろの かち">
+        <g font-family="Zen Maru Gothic, sans-serif" font-weight="900" text-anchor="middle">
+          <circle cx="70" cy="45" r="30" fill="#1a1c1e"/><text x="70" y="55" font-size="28" fill="#d6d9d6">27</text>
+          <text x="150" y="55" font-size="24" fill="#7a8a82">たい</text>
+          <circle cx="230" cy="45" r="30" fill="#f7f4ec" stroke="#cfc9bb"/><text x="230" y="55" font-size="28" fill="#3b4541">22</text>
+          <text x="70" y="100" font-size="18" fill="#e0b13c">🏆 かち！</text>
+        </g>
+      </svg>
+    </figure>
+    <p>ゲームでは、いまの かずが てもとの コマの よこに でています。</p>
+  </section>
+
+  <!-- 8 -->
+  <section class="card" id="s8">
+    <h2><span class="num">8</span>山コマ（ver2）で あそぶ</h2>
+    <p>がめんの うえの「山コマ（ver2）」を おすと、うんだめしの ルールに なります。</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div>49この コマを ぜんぶ まぜて、<b>やま</b>に します。</div></li>
+      <li><span class="n">2</span><div>さいしょの 1こは、しろで ばんの まんなかに おかれます。</div></li>
+      <li><span class="n">3</span><div>じぶんの ばんに なったら、やまから <b>1こ ひきます</b>。すうじは えらべません。なにが でるかは おたのしみ！</div></li>
+      <li><span class="n">4</span><div>ひいた コマを おく ばしょ、ひっくりかえしかたは クラシックと おなじです。やまが なくなったら おしまいです。</div></li>
+    </ol>
+    <figure class="fig">
+      <svg viewBox="0 0 280 110" width="280" role="img" aria-label="うらむきの コマの やまから 5の コマを 1こ ひく え">
+        <g font-family="Zen Maru Gothic, sans-serif" font-weight="900" text-anchor="middle">
+          <ellipse cx="70" cy="86" rx="46" ry="12" fill="#1a1c1e" opacity=".25"/>
+          <circle cx="56" cy="72" r="22" fill="#7a8a82"/><circle cx="84" cy="72" r="22" fill="#8e9d95"/>
+          <circle cx="70" cy="54" r="22" fill="#a4b2aa"/><text x="70" y="62" font-size="22" fill="#fff">?</text>
+          <path d="M112 58 C 150 20, 180 20, 200 44" fill="none" stroke="#e0b13c" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 8"/>
+          <circle cx="222" cy="58" r="28" fill="#f7f4ec" stroke="#e0b13c" stroke-width="4"/><text x="222" y="68" font-size="28" fill="#3b4541">5</text>
+          <text x="222" y="106" font-size="14" fill="#7a8a82">ひいた！</text>
+        </g>
+      </svg>
+    </figure>
+  </section>
+
+  <!-- 9 -->
+  <section class="card" id="s9">
+    <h2><span class="num">9</span>がめんの つかいかた</h2>
+    <div class="ui">
+      <div><span class="pill">返せる枚数を表示</span><span>ますの うえに「+3」の ように、ひっくりかえせる かずが でます。れんしゅうに べんり！</span></div>
+      <div><span class="pill">白をコンピュータにする</span><span>しろを コンピュータが うごかします。ひとりで あそべます。</span></div>
+      <div><span class="pill">1手戻す</span><span>まちがえたら 1かい まえに もどせます。</span></div>
+      <div><span class="pill">最初から</span><span>あたらしく はじめから あそびます。</span></div>
+    </div>
+    <p>コマを おく まえに、ますの うえに マウスを のせると、<b>ひっくりかえる コマが きいろく ひかって</b> おしえてくれます。</p>
+    <h3>⌨️ キーボードでも あそべます</h3>
+    <p><kbd>1</kbd>〜<kbd>6</kbd> で すうじを えらぶ、やじるしキーで ますを うごく、<kbd>Enter</kbd> で おく、<kbd>U</kbd> で 1手もどす、<kbd>H</kbd> で ヒント。</p>
+  </section>
+
+  <!-- 10 -->
+  <section class="card" id="s10">
+    <h2><span class="num">10</span>こまったときは</h2>
+    <dl class="qa">
+      <dt>おきたい ますに おけないよ。</dt>
+      <dd>ほかに ひっくりかえせる ますが あるからです。きいろい まるの ついた ますを さがしてね。</dd>
+      <dt>ますを おしても なにも おきないよ。</dt>
+      <dd>さきに てもとの すうじを えらんでね（クラシックの とき）。</dd>
+      <dt>すうじの ボタンが おせないよ。</dt>
+      <dd>その すうじは もう つかいきったか、あいての ばんです。</dd>
+      <dt>パスしたいな。</dt>
+      <dd>セプタプルに パスは ありません。どこかには かならず おけます。</dd>
+    </dl>
+    <div class="tip">かつ コツ：あいての コマが ながく ならんでいる ところを ねらおう。すうじを たして「7のなかま」に なる ばしょを さがすのが たのしいよ！</div>
+  </section>
+
+  <div class="end">
+    <a class="btn primary" href="index.html">▶ さあ、あそんでみよう！</a>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  const FONT = "Zen Maru Gothic, sans-serif";
+
+  // 7x7 board (section 2) and board with legal-move dots (section 6)
+  function drawBoard(g, stones, dots, star) {
+    const S = 34, O = 6;
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) {
+      const x = O + c * S, y = O + r * S;
+      g.appendChild(svgEl("rect", { x, y, width: S - 1, height: S - 1, fill: "#2b6b55" }));
+    }
+    for (const [r, c, col, v] of stones) {
+      const cx = O + c * S + S / 2 - .5, cy = O + r * S + S / 2 - .5;
+      g.appendChild(svgEl("circle", { cx, cy, r: 13, fill: col === "b" ? "#1a1c1e" : "#f7f4ec" }));
+      g.appendChild(svgEl("text", { x: cx, y: cy + 6, "text-anchor": "middle", "font-family": FONT, "font-weight": 900, "font-size": 16, fill: col === "b" ? "#d6d9d6" : "#3b4541" }, v));
+    }
+    for (const [r, c] of dots) {
+      g.appendChild(svgEl("circle", { cx: O + c * S + S / 2 - .5, cy: O + r * S + S / 2 - .5, r: 6, fill: "rgba(224,177,60,.35)", stroke: "#e0b13c", "stroke-width": 2 }));
+    }
+    if (star) g.appendChild(svgEl("text", { x: O + 3 * S + S / 2, y: O + 3 * S - 3, "text-anchor": "middle", "font-size": 12, fill: "#e0b13c" }, "★"));
+  }
+  drawBoard(document.getElementById("grid"), [[3, 3, "b", 7]], [], true);
+  // 白が「3」を選んだ場面。印はゲームと同じ計算（computeFlips）で、返せるマスに付ける
+  const okStones = [[3, 3, "b", 7], [3, 4, "w", 4], [2, 3, "b", 4], [4, 2, "w", 2]];
+  const board = Array.from({ length: 7 }, () => Array(7).fill(null));
+  for (const [r, c, col, v] of okStones) board[r][c] = [col, v];
+  function flipCount(r, c, color, val) {
+    let n = 0;
+    for (const [dr, dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
+      const chain = [];
+      for (let rr = r + dr, cc = c + dc; rr >= 0 && rr < 7 && cc >= 0 && cc < 7 && board[rr][cc]; rr += dr, cc += dc) chain.push(board[rr][cc]);
+      let sum = val, last = -1;
+      chain.forEach((s, k) => { sum += s[1]; if (sum % 7 === 0) last = k; });
+      for (let k = 0; k <= last; k++) if (chain[k][0] !== color) n++;
+    }
+    return n;
+  }
+  const okDots = [];
+  for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) if (!board[r][c] && flipCount(r, c, "w", 3) > 0) okDots.push([r, c]);
+  drawBoard(document.getElementById("okgrid"), okStones, okDots, false);
+
+  // pieces (section 2)
+  const pieces = document.getElementById("pieces");
+  for (let v = 1; v <= 7; v++) {
+    const d = document.createElement("div");
+    d.className = "pile";
+    d.innerHTML = `<span class="felt" style="gap:4px;padding:5px 7px"><span class="st sm b">${v}</span><span class="st sm w">${v}</span></span><span class="count">${v === 7 ? "1こ" : "8こ"}</span>`;
+    pieces.appendChild(d);
+  }
+
+  // rack (section 4)
+  const rack = document.getElementById("rack");
+  for (let v = 1; v <= 6; v++) {
+    const x = 4 + (v - 1) * 49, sel = v === 3;
+    rack.appendChild(svgEl("rect", { x, y: 6, width: 44, height: 54, rx: 9, fill: sel ? "#e0b13c" : "#eef3ef", stroke: sel ? "#e0b13c" : "#b9c7bf", "stroke-width": 2 }));
+    rack.appendChild(svgEl("text", { x: x + 22, y: 41, fill: "#1a1c1e" }, v));
+    rack.appendChild(svgEl("text", { x: x + 34, y: 56, "font-size": 10, fill: sel ? "#1a1c1e" : "#56665f" }, "×4"));
+  }
+
+  // 8 directions (section 5)
+  const dirs = document.getElementById("dirs");
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+    dirs.appendChild(svgEl("line", { x1: 110 + c * 34, y1: 110 + s * 34, x2: 110 + c * 86, y2: 110 + s * 86 }));
+  }
+
+  // ---- flip examples (section 5) ----
+  // placed: [color, value]; left/right: stones ordered outward from the placed stone; null = empty cell
+  const EXAMPLES = [
+    { title: "れい1：ぜんぶ ひっくりかえる", placed: ["w", 2], right: [["b", 3], ["b", 4], ["b", 5]],
+      note: `しろの 2を おきました。<span class="eq">2＋3＋4＋5＝14</span> 14は「7のなかま」なので、くろの 3・4・5が ぜんぶ しろに なります。` },
+    { title: "れい2：とちゅうまで ひっくりかえる", placed: ["b", 5], right: [["w", 2], ["w", 3], ["w", 4], ["w", 5]],
+      note: `<span class="eq">5＋2＝7</span> と <span class="eq">5＋2＋3＋4＝14</span> の 2かい「7のなかま」に なりました。<b>とおいほうの 14</b>まで ひっくりかえります。さいごの 5を たすと 19 なので、5は そのままです。` },
+    { title: "れい3：じぶんの コマも たす", placed: ["w", 2], right: [["w", 3], ["w", 4], ["b", 5]],
+      note: `じぶんの いろ（しろ）の 3と 4も たします。<span class="eq">2＋3＋4＋5＝14</span> なので、さいごの くろの 5が しろに なります。` },
+    { title: "れい4：あいている ますで ストップ", placed: ["b", 3], right: [["w", 4], null, ["w", 7]],
+      note: `<span class="eq">3＋4＝7</span> で 4が くろに なります。そのさきは あいている ますなので、7は たしません。` },
+    { title: "れい5：りょうがわ べつべつに かぞえる", placed: ["w", 4], left: [["b", 1], ["b", 2]], right: [["b", 3]],
+      note: `ひだりは <span class="eq">4＋1＋2＝7</span>、みぎは <span class="eq">4＋3＝7</span>。どちらも「7のなかま」なので、りょうほう ひっくりかえります。<br>ひだりと みぎを つなげて たすことは できません。` },
+    { title: "れい6：ひっくりかえらない とき", placed: ["b", 1], right: [["w", 2], ["w", 3]],
+      note: `<span class="eq">1＋2＝3</span>、<span class="eq">1＋2＋3＝6</span>。どちらも「7のなかま」では ないので、なにも かわりません。` },
+  ];
+
+  // Same rule as the game: running sum outward; flip up to the farthest multiple of 7; stop at an empty cell.
+  function sideResult(val, side, color) {
+    let sum = val, last = -1; const sums = [];
+    for (let k = 0; k < side.length; k++) {
+      if (!side[k]) break;
+      sum += side[k][1]; sums.push(sum);
+      if (sum % 7 === 0) last = k;
+    }
+    return { sums, last };
+  }
+
+  const stoneHTML = (s, extra = "") => s ? `<span class="st ${s[0]} ${extra}">${s[1]}</span>` : `<span class="st gap" aria-label="あいている ます"></span>`;
+
+  function lineHTML(ex, after, withSums) {
+    const color = ex.placed[0];
+    const L = ex.left || [], R = ex.right || [];
+    const lr = sideResult(ex.placed[1], L, color), rr = sideResult(ex.placed[1], R, color);
+    const cell = (s, side, k, res) => {
+      let st = s;
+      if (after && s && k <= res.last) st = [color, s[1]];
+      const sum = withSums ? `<span class="sum" data-side="${side}" data-k="${k}"></span>` : "";
+      return `<span class="cellwrap">${stoneHTML(st, "")}${sum}</span>`;
+    };
+    const left = L.map((s, k) => cell(s, "l", k, lr)).reverse().join("");
+    const right = R.map((s, k) => cell(s, "r", k, rr)).join("");
+    const mid = `<span class="cellwrap">${stoneHTML(ex.placed, "new")}${withSums ? `<span class="sum" data-mid></span>` : ""}</span>`;
+    return `<span class="line">${left}${mid}${right}</span>`;
+  }
+
+  const host = document.getElementById("examples");
+  EXAMPLES.forEach((ex, i) => {
+    const box = document.createElement("div");
+    box.className = "ex";
+    box.innerHTML = `
+      <p class="ex-title">${ex.title}</p>
+      <div class="ex-row">
+        <div class="ex-side"><span class="lbl">おいた とき</span><div class="play">${lineHTML(ex, false, true)}</div></div>
+        <span class="arrow" aria-hidden="true"><span>➜</span></span>
+        <div class="ex-side"><span class="lbl">おわったら</span>${lineHTML(ex, true, false)}</div>
+      </div>
+      <p class="ex-note">${ex.note}</p>
+      <div class="ex-ctrl"><button class="btn primary" type="button">▶ うごかしてみる</button></div>`;
+    host.appendChild(box);
+    box.querySelector("button").addEventListener("click", e => play(ex, box, e.currentTarget));
+  });
+
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  async function play(ex, box, btn) {
+    btn.disabled = true;
+    const holder = box.querySelector(".play");
+    holder.innerHTML = lineHTML(ex, false, true);
+    const color = ex.placed[0];
+    const step = reduce ? 150 : 650;
+    const mid = holder.querySelector("[data-mid]");
+    mid.textContent = ex.placed[1]; mid.classList.add("show");
+    await wait(step);
+    for (const [key, side] of [["l", ex.left || []], ["r", ex.right || []]]) {
+      if (!side.length) continue;
+      const res = sideResult(ex.placed[1], side, color);
+      const cells = [...holder.querySelectorAll(`.sum[data-side="${key}"]`)].map(el => [el, el.previousElementSibling]);
+      for (let k = 0; k < side.length; k++) {
+        const [sumEl, st] = cells[k];
+        if (!side[k]) { sumEl.textContent = "とまる"; sumEl.classList.add("show"); await wait(step); break; }
+        st.classList.add("on");
+        sumEl.textContent = res.sums[k];
+        sumEl.classList.add("show");
+        if (res.sums[k] % 7 === 0) { sumEl.classList.add("seven"); sumEl.textContent = res.sums[k] + " ✨"; }
+        await wait(step);
+        st.classList.remove("on");
+      }
+      for (let k = 0; k <= res.last; k++) {
+        const st = cells[k][1];
+        if (!st.classList.contains(color)) {
+          st.classList.add("flipping");
+          await wait(reduce ? 0 : 250);
+          st.classList.remove("b", "w"); st.classList.add(color);
+          await wait(reduce ? 0 : 250);
+          st.classList.remove("flipping");
+        }
+      }
+      await wait(step / 2);
+    }
+    btn.textContent = "↺ もういちど";
+    btn.disabled = false;
+  }
+})();
+</script>
+</body>
+</html>
