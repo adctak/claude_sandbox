@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+JP:wght@500;700;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #060b18;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: #f2f4fa;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+#game { display: block; width: 100vw; height: 100vh; background: #060b18; cursor: crosshair; }
+
+.hidden { display: none !important; }
+
+/* ---------- overlays ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 28px 16px 40px;
+  background:
+    radial-gradient(ellipse 900px 520px at 50% -10%, rgba(255, 214, 102, 0.16), transparent 65%),
+    radial-gradient(ellipse 700px 500px at 50% 120%, rgba(60, 160, 90, 0.25), transparent 70%),
+    rgba(5, 9, 20, 0.94);
+  touch-action: pan-y;
+}
+
+.menuBox {
+  width: 100%;
+  max-width: 880px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.logo {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: clamp(40px, 9vw, 84px);
+  letter-spacing: 4px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 4px 0 #1b2a55, 0 0 30px rgba(120, 170, 255, 0.35);
+  font-style: italic;
+}
+.logo span { color: #ffd166; margin-left: 14px; text-shadow: 0 4px 0 #6b4a00, 0 0 30px rgba(255, 200, 80, 0.4); }
+.logo.small { font-size: clamp(34px, 7vw, 60px); }
+
+.tagline { color: #c9d3ee; font-size: 15px; letter-spacing: 2px; margin-top: -6px; }
+
+.section { width: 100%; }
+.label { font-size: 12px; letter-spacing: 3px; color: #8fa3d6; margin-bottom: 8px; font-weight: 700; }
+
+.teamRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 640px) { .teamRow { grid-template-columns: repeat(2, 1fr); } }
+
+.teamCard {
+  position: relative;
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 8px 10px;
+  background: linear-gradient(160deg, var(--c1), color-mix(in srgb, var(--c1) 55%, #000));
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  color: #fff;
+  font-family: inherit;
+  text-align: center;
+}
+.teamCard:hover { transform: translateY(-2px); }
+.teamCard.on { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.35), 0 8px 24px rgba(0,0,0,0.5); }
+.teamCard.dis { opacity: 0.3; pointer-events: none; }
+.teamCard .cap {
+  width: 34px; height: 34px; margin: 0 auto 6px;
+  border-radius: 50% 50% 8px 8px;
+  background: var(--cap);
+  border: 3px solid var(--c2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 11px; color: var(--c2);
+}
+.teamCard .tn { font-weight: 900; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.teamCard .te { font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 1.5px; opacity: 0.8; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.teamCard .ts { font-size: 10.5px; margin-top: 6px; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.teamCard.light { color: #14264d; }
+.teamCard.light .tn, .teamCard.light .te, .teamCard.light .ts { text-shadow: none; }
+
+.optRow { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+.seg { display: inline-flex; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); }
+.seg button {
+  font-family: inherit; font-weight: 700; font-size: 14px;
+  padding: 9px 16px; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.04); color: #c9d3ee;
+}
+.seg button + button { border-left: 1px solid rgba(255,255,255,0.12); }
+.seg button.on { background: #ffd166; color: #1b1400; }
+
+.mainBtn {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 4px;
+  padding: 14px 54px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #1b1400;
+  background: linear-gradient(180deg, #ffe08a, #ffb627);
+  box-shadow: 0 6px 0 #a86b00, 0 12px 30px rgba(255, 180, 40, 0.3);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.mainBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a86b00; }
+.mainBtn.ghost { background: rgba(255,255,255,0.08); color: #e6ebf8; box-shadow: 0 6px 0 rgba(0,0,0,0.4); font-size: 18px; }
+.btnRow { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+.howto { width: 100%; max-width: 760px; text-align: left; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 16px; border: 1px solid rgba(255,255,255,0.08); }
+.howto summary { cursor: pointer; font-weight: 700; color: #ffd166; letter-spacing: 2px; }
+.howGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; }
+@media (max-width: 640px) { .howGrid { grid-template-columns: 1fr; } }
+.howto h3 { font-size: 15px; margin-bottom: 6px; }
+.howto p { font-size: 13px; line-height: 1.75; color: #cfd7ee; }
+.howto b { color: #ffe08a; }
+.note { font-size: 12px; color: #8fa3d6; margin-top: 8px; }
+
+/* ---------- result ---------- */
+#resLine, #resBox { width: 100%; overflow-x: auto; }
+table.ls, table.box {
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-size: 14px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 8px;
+  overflow: hidden;
+}
+table.ls th, table.ls td, table.box th, table.box td { padding: 6px 9px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+table.ls th, table.box th { color: #8fa3d6; font-weight: 700; font-size: 12px; }
+table.ls td.tm { text-align: left; font-weight: 900; }
+table.ls td.r { color: #ffd166; font-weight: 900; font-size: 16px; }
+table.box td.nm { text-align: left; }
+table.box td.lg { text-align: left; color: #aab6d8; font-size: 12px; }
+table.box tr.hl td { color: #ffe08a; }
+
+/* ---------- in-game controls ---------- */
+#pitchPanel {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  max-width: calc(100vw - 16px);
+}
+#pitchList { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pbtn {
+  font-family: inherit;
+  min-width: 78px;
+  padding: 6px 10px 5px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(8, 14, 30, 0.82);
+  color: #e8edf9;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.25;
+}
+.pbtn .k { font-family: 'Oswald', sans-serif; font-size: 11px; opacity: 0.6; margin-right: 4px; }
+.pbtn .n { font-weight: 900; font-size: 13px; }
+.pbtn .lv { display: block; font-size: 11px; letter-spacing: 1px; color: var(--pc); }
+.pbtn.on { border-color: var(--pc); box-shadow: 0 0 12px color-mix(in srgb, var(--pc) 60%, transparent); background: rgba(20, 28, 55, 0.95); }
+.subBtn {
+  font-family: inherit; font-weight: 700; font-size: 13px;
+  padding: 0 14px; border-radius: 8px; cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.15); background: rgba(8, 14, 30, 0.82); color: #ffd166;
+}
+
+.touch {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 9;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+#touchPitch { bottom: 96px; }
+.tbtn {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.5);
+  background: rgba(10, 18, 40, 0.6);
+  color: #fff;
+  touch-action: none;
+}
+.tbtn.big { width: 92px; height: 92px; font-size: 17px; background: rgba(255, 170, 40, 0.55); border-color: #ffd166; }
+.tbtn.on { background: rgba(255, 70, 50, 0.75); border-color: #ff8a70; }
+
+#btnFast {
+  position: fixed;
+  right: 16px;
+  top: 76px;
+  z-index: 9;
+  font-family: inherit; font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(8, 14, 30, 0.7);
+  color: #fff;
+  cursor: pointer;
+}
+
+/* ---------- small screens ---------- */
+@media (max-height: 520px) {
+  #pitchPanel {
+    left: 8px;
+    top: 104px;
+    bottom: auto;
+    transform: none;
+    flex-direction: column;
+    max-width: none;
+  }
+  #pitchList { flex-direction: column; gap: 4px; }
+  .pbtn { min-width: 0; padding: 4px 9px; }
+  .pbtn .lv { display: none; }
+  .pbtn .n { font-size: 12px; }
+  .subBtn { padding: 6px 10px; font-size: 12px; }
+}
+@media (orientation: portrait) {
+  .touch { bottom: 118px; }
+  #touchPitch { bottom: 118px; }
+  #pitchPanel { bottom: 104px; }
+}
