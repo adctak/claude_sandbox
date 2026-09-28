@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>DIAMOND SPIRITS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- pitching panel (user on defense) -->
+  <div id="pitchPanel" class="hidden">
+    <div id="pitchList"></div>
+    <button id="btnRelief" class="subBtn">継投</button>
+  </div>
+
+  <!-- touch controls -->
+  <div id="touchBat" class="touch hidden">
+    <button id="btnPower" class="tbtn">強振</button>
+    <button id="btnSwing" class="tbtn big">SWING</button>
+  </div>
+  <div id="touchPitch" class="touch hidden">
+    <button id="btnThrow" class="tbtn big">投球</button>
+  </div>
+  <button id="btnFast" class="hidden">▶▶ 早送り</button>
+
+  <!-- title / setup -->
+  <div id="menu" class="overlay">
+    <div class="menuBox">
+      <h1 class="logo">DIAMOND<span>SPIRITS</span></h1>
+      <p class="tagline">リアル志向・一球入魂のプロ野球ゲーム</p>
+
+      <div class="section">
+        <div class="label">自チーム</div>
+        <div id="myTeams" class="teamRow"></div>
+      </div>
+      <div class="section">
+        <div class="label">相手チーム</div>
+        <div id="cpuTeams" class="teamRow"></div>
+      </div>
+
+      <div class="optRow">
+        <div class="opt">
+          <div class="label">攻守</div>
+          <div class="seg" id="optSide">
+            <button data-v="0" class="on">先攻</button><button data-v="1">後攻</button>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="label">イニング</div>
+          <div class="seg" id="optInn">
+            <button data-v="3" class="on">3回</button><button data-v="6">6回</button><button data-v="9">9回</button>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="label">難易度</div>
+          <div class="seg" id="optDiff">
+            <button data-v="easy">かんたん</button><button data-v="normal" class="on">ふつう</button><button data-v="pro">プロ</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="startBtn" class="mainBtn">PLAY BALL</button>
+
+      <details class="howto">
+        <summary>操作方法</summary>
+        <div class="howGrid">
+          <div>
+            <h3>⚾ 打撃</h3>
+            <p><b>マウス / 矢印・WASD</b> ミートカーソル移動</p>
+            <p><b>クリック / スペース</b> スイング</p>
+            <p><b>右クリック / E / Shift押しっぱなし</b> 強振（カーソルは小さいが打球が強い）</p>
+            <p>カーソルの<b>中心で捉える</b>ほど強い打球に。ボールがカーソル中心より上ならフライ、下ならゴロ。早めに振れば引っ張り、遅れれば流し打ち。</p>
+          </div>
+          <div>
+            <h3>🔥 投球</h3>
+            <p><b>1〜5キー / ボタン</b> 球種選択</p>
+            <p><b>マウス / 矢印・WASD</b> コース指定</p>
+            <p><b>クリック / スペース</b> 投球開始 → 縮む円が<b>カーソルと重なった瞬間</b>にもう一度押すと球威・制球アップ</p>
+            <p><b>P</b> 継投（投手交代）</p>
+          </div>
+        </div>
+        <p class="note">守備と走塁はオートです。プレー中はクリックで早送り。</p>
+      </details>
+      <p id="record" class="note"></p>
+    </div>
+  </div>
+
+  <!-- game over -->
+  <div id="result" class="overlay hidden">
+    <div class="menuBox">
+      <h1 id="resTitle" class="logo small">GAME SET</h1>
+      <p id="resSub" class="tagline"></p>
+      <div id="resLine"></div>
+      <div id="resBox"></div>
+      <div class="btnRow">
+        <button id="againBtn" class="mainBtn">もう一度</button>
+        <button id="menuBtn" class="mainBtn ghost">メニュー</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
